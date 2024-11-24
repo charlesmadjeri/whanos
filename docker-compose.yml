@@ -1,0 +1,21 @@
+services:
+  docker-dind:
+    image: docker:dind
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - 4284:4284
+
+  jenkins:
+    build:
+      context: .
+      dockerfile: ./jenkins/Dockerfile
+      args:
+        - JENKINS_ADMIN_PASSWORD
+    env_file:
+      - ./jenkins/.env
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+    depends_on:
+      - docker-dind

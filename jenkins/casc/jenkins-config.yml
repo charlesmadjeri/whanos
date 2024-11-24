@@ -1,0 +1,44 @@
+# jobs:
+#   - file: /jenkins/job_dsl.groovy
+
+jenkins:
+  authorizationStrategy:
+    roleBased:
+      roles:
+        global:
+        - entries:
+          - user: "admin"
+          name: "admin"
+          pattern: ".*"
+          permissions:
+          - "Overall/Administer"
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+      - id: "admin"
+        name: "Admin"
+        password: "${JENKINS_ADMIN_PASSWORD}"
+  projectNamingStrategy:
+    roleBased:
+      forceExistingJobs: true
+  noUsageStatistics: true
+  remotingSecurity:
+    enabled: true
+  systemMessage: "Welcome to the Whanos instance."
+  views:
+  - all:
+      name: "all"
+
+security:
+  globalJobDslSecurityConfiguration:
+    useScriptSecurity: true
+
+unclassified:
+  location:
+    adminAddress: "contact@email.fr"
+    url: "${JENKINS_URL}"
+  scmGit:
+
+    globalConfigEmail: "git.user.email"
+    globalConfigName: "git.user.name"
