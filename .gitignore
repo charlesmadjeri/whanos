@@ -1,0 +1,135 @@
+# IDE and Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment and local config
+.env
+*.env
+.env.local
+.env.*.local
+*.local.yml
+*.local.yaml
+
+# Jenkins related
+jenkins/workspace/
+jenkins/plugins/
+jenkins/secrets/
+*.log
+jenkins.war
+
+# Ansible related
+*.retry
+ansible/*.retry
+ansible/inventory/local
+ansible/vault_password.txt
+
+# Docker related
+.docker/
+docker-compose.override.yml
+
+# Kubernetes related
+kubeconfig
+*.kubeconfig
+.kube/
+
+# Node.js (for JavaScript projects)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Python related
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Java related
+*.class
+*.jar
+*.war
+*.ear
+*.logs
+*.iml
+target/
+.gradle/
+build/
+out/
+
+# C related
+*.o
+*.ko
+*.obj
+*.elf
+*.lib
+*.a
+*.la
+*.lo
+*.dll
+*.so
+*.so.*
+*.dylib
+*.exe
+*.out
+*.app
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# Certificate and key files
+*.pem
+*.key
+*.crt
+*.cer
+*.der
+*.priv
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+logs/
+*.db
+
+# Test coverage
+coverage/
+.coverage
+.coveragerc
+coverage.xml
+*.cover 
