@@ -1,6 +1,3 @@
-# jobs:
-#   - file: /jenkins/job_dsl.groovy
-
 jenkins:
   authorizationStrategy:
     roleBased:
@@ -32,7 +29,7 @@ jenkins:
 
 security:
   globalJobDslSecurityConfiguration:
-    useScriptSecurity: true
+    useScriptSecurity: false # TODO: Enable script security
 
 unclassified:
   location:
@@ -42,3 +39,8 @@ unclassified:
 
     globalConfigEmail: "git.user.email"
     globalConfigName: "git.user.name"
+
+jobs:
+  - file: /jenkins/jobs/folders.groovy
+  - file: /jenkins/jobs/base_images_jobs.groovy
+  - file: /jenkins/jobs/link_project.groovy
