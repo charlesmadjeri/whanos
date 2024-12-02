@@ -137,4 +137,4 @@ coverage.xml
 # Environment files
 .env
 .env.*
-!.env.template 
+!.env.example
