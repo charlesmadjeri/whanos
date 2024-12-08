@@ -3,8 +3,15 @@ services:
     image: docker:dind
     restart: unless-stopped
     privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=""
     ports:
       - 4284:4284
+      - 2375:2375
+    command: 
+      - dockerd
+      - --host=tcp://0.0.0.0:2375
+      - --host=unix:///var/run/docker.sock
 
   jenkins:
     build:
@@ -21,3 +28,8 @@ services:
       - DOCKER_HOST=tcp://docker-dind:2375
     depends_on:
       - docker-dind
+    volumes:
+      - jenkins-data:/var/jenkins_home
+
+volumes:
+  jenkins-data:

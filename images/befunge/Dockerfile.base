@@ -1,4 +1,4 @@
-FROM esolang/befunge93
+FROM esolang/befunge98
 
 SHELL ["/bin/bash", "-c"]
 
