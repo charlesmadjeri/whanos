@@ -11,3 +11,5 @@ ws-cleanup:latest
 git:latest
 build-pipeline-plugin:latest
 parameterized-trigger:latest
+git-parameter:latest
+workflow-aggregator:latest

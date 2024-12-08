@@ -5,10 +5,19 @@ SHELL ["/bin/bash", "-c"]
 
 WORKDIR /app
 
+RUN npm install -g typescript
+
 ONBUILD COPY package*.json ./
 ONBUILD RUN npm install --production && rm package*.json
 
 ONBUILD COPY . .
+ONBUILD RUN if [ -f "tsconfig.json" ]; then \
+        npm install --save-dev typescript && \
+        npx tsc && \
+        rm -rf $(find . -name "*.ts" ! -name "*.d.ts") && \
+        npm uninstall typescript; \
+    fi
+
 ONBUILD RUN rm -rf Dockerfile* .git*
 
 ONBUILD CMD ["node", "."]
