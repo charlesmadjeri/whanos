@@ -1,4 +1,4 @@
-FROM gcc:13
+FROM gcc:13.2
 
 SHELL ["/bin/bash", "-c"]
 
