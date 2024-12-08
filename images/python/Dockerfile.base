@@ -1,11 +1,14 @@
-FROM python:3.13-alpine
+FROM python:3.12-alpine
 
+RUN apk add --no-cache bash
 SHELL ["/bin/bash", "-c"]
 
-ONBUILD COPY . /app
+WORKDIR /app
 
-ONBUILD WORKDIR /app
+ONBUILD COPY requirements.txt .
+ONBUILD RUN pip install -r requirements.txt && rm requirements.txt
 
-ONBUILD RUN pip install -r requirements.txt
+ONBUILD COPY . .
+ONBUILD RUN rm -rf Dockerfile* .git*
 
 ONBUILD CMD ["python", "-m", "app"]

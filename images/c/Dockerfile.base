@@ -1,11 +1,14 @@
-FROM gcc:14
+FROM gcc:13
 
 SHELL ["/bin/bash", "-c"]
 
-ONBUILD COPY . /app
+WORKDIR /app
 
-ONBUILD WORKDIR  /app
+ONBUILD COPY Makefile .
+ONBUILD COPY . .
+ONBUILD RUN make && \
+    mv compiled-app /compiled-app && \
+    rm -rf /app/* && \
+    rm -rf Dockerfile* .git*
 
-ONBUILD RUN make && rm -rf Makefile app
-
-ONBUILD CMD ["./compiled-app"]
+ONBUILD CMD ["/compiled-app"]

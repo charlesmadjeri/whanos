@@ -18,7 +18,7 @@ RUN echo '#!/bin/bash\n\
 cat $1 | /usr/local/bin/befunge-interpreter' > /usr/local/bin/bef && \
     chmod +x /usr/local/bin/bef
 
-ONBUILD COPY . .
-ONBUILD RUN rm -rf Dockerfile* .git*
+COPY . .
+RUN rm -rf Dockerfile* .git*
 
-ONBUILD CMD ["/usr/local/bin/bef", "./app/main.bf"]
+CMD ["/usr/local/bin/bef", "./app/main.bf"] 
