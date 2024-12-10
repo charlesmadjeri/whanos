@@ -7,7 +7,7 @@ ENV CASC_JENKINS_CONFIG /jenkins/casc/jenkins-config.yml
 ENV JENKINS_URL=${JENKINS_URL}
 
 USER root
-RUN apt-get update && apt-get install -y lsb-release
+RUN apt-get update && apt-get install -y lsb-release tree
 RUN curl -fsSLo /usr/share/keyrings/docker-archive-keyring.asc \
     https://download.docker.com/linux/debian/gpg
 RUN echo "deb [arch=$(dpkg --print-architecture) \
