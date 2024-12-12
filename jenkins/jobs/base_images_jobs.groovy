@@ -6,7 +6,7 @@ languages.each { lang ->
             shell("""
                 cd /images/${lang}
                 docker build -t whanos-${lang}-base:latest -f Dockerfile.base .
-                docker build -t whanos-${lang}:latest -f Dockerfile .
+                # PUSH TO DOCKER REGISTRY
             """)
         }
     }

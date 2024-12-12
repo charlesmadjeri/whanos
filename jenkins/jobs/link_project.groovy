@@ -69,9 +69,10 @@ freeStyleJob('link-project') {
                             else
                                 docker build -t \\\${PROJECT_NAME}:latest -f /images/\\\$LANGUAGE/Dockerfile .
                             fi
+                            # PUSH TO DOCKER REGISTRY
                             
-                            if [ -f manifest.yml ]; then
-                                kubectl apply -f manifest.yml
+                            if [ -f whanos.yml ]; then
+                                kubectl apply -f whanos.yml
                             fi
                         """)
                     }
