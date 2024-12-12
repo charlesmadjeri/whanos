@@ -5,10 +5,6 @@
     state: present
     update_cache: yes
 
-- name: Reset UFW
-  ufw:
-    state: reset
-
 - name: Allow SSH
   ufw:
     rule: allow

@@ -7,9 +7,7 @@ RESET  := \033[0m
 # Target help text
 TARGET_MAX_CHAR_NUM=20
 
-.PHONY: start build stop restart reset logs clean help
-
-PROJECT_IMAGES = jenkins docker-dind
+.PHONY: help run run-verbose run-very-verbose
 
 ## Show help
 help:
@@ -29,31 +27,14 @@ help:
 	{ lastLine = $$0 }' $(MAKEFILE_LIST)
 	@printf '\n'
 
-## Start containers in detached mode
-start:
-	docker compose up -d
+## Run the playbook to setup the server
+run:
+	ansible-playbook -i ansible/inventory.yml ansible/playbook.yml
 
-## Build and start containers in detached mode
-build:
-	docker compose up --build -d
+## Run the playbook to setup the server in verbose mode
+run-verbose:
+	ansible-playbook -i ansible/inventory.yml ansible/playbook.yml -vvv
 
-## Stop all containers
-stop:
-	docker compose down
-
-## Restart all containers
-restart: stop start
-
-## Reset containers, remove images and rebuild
-reset:
-	docker compose down
-	docker rmi $(PROJECT_IMAGES) -f
-	docker compose up --build -d
-
-## Show container logs
-logs:
-	docker compose logs -f
-
-## Clean up containers, images, volumes and orphans
-clean:
-	docker compose down --rmi local -v --remove-orphans
+## Run the playbook to setup the server in very verbose mode
+run-very-verbose:
+	ansible-playbook -i ansible/inventory.yml ansible/playbook.yml -vvvvv
