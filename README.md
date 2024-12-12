@@ -1,41 +1,39 @@
-# Whanos project
+# Whanos Project
 
-## Setup (Debian VPS)
+## Prerequisites
+- Ansible installed on your local machine
+- A Debian-based VPS
+- SSH access to the VPS
 
-### Setup a Debian 12 VPS with:
+## Initial Setup
 
-- sudo
-- python3
+1. Clone the repository
+2. Copy the example configuration:
+   ```bash
+   cp ansible/group_vars/all.example.yml ansible/group_vars/all.yml
+   ```
+3. Configure your variables in `all.yml`:
+   ```yaml
+   vps_ip: "your_vps_ip"
+   vps_root_password: "your_root_password"
+   jenkins_admin_password: "your_jenkins_password"
+   ```
 
-### Setup your localhost:
-- Install `ansible` locally:
-```bash
-sudo apt install ansible
-```
-- Clone the repository locally:
-```bash
-git clone $REPO_NAME
-```
-- Setup ansible vault password:
-```bash
-# Replace with your vault password:
-echo "your_ansible_vault_passwd" > /tmp/.vault_pass
-export ANSIBLE_VAULT_PASSWORD_FILE=/tmp/.vault_pass
-```
-- If you want to use our inventory, execute:
-```bash
-cp ansible/inventory.example.yml ansible/inventory.yml
-```
-- Setup your variables:
-```bash
-cp ansible/group_vars/all.example.yml ansible/group_vars/all.yml
+## Running the Playbook
 
-# Fill in the variables with your values:
-vim ansible/group_vars/all.yml
-# Encrypt the file:
-ansible-vault encrypt ansible/group_vars/all.yml
-```
-- Run the playbook locally:
+The project includes several make targets for running the playbook:
+
 ```bash
-ansible-playbook -i ansible/inventory.yml ansible/playbook.yml
+# Basic run
+make run
+
+# Run with verbose output
+make run-verbose
+
+# Run with very verbose output (debug mode)
+make run-very-verbose
 ```
+
+## Documentation
+
+### [Documentation Hub](docs/documentation-hub.md)

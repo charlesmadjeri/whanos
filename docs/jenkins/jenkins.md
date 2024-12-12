@@ -49,5 +49,3 @@ The following plugins are essential for the Whanos Jenkins instance to function 
 - Enables triggering of downstream jobs with parameters
 - Used in the "Build all base images" job
 - Manages dependencies between build jobs
-
-These plugins form the minimal required set for the Whanos Jenkins instance to operate as configured. Each plugin has been carefully selected to provide specific functionality needed by our implementation, avoiding unnecessary plugins that could increase maintenance overhead or security surface area. 
