@@ -83,19 +83,19 @@
     --plugin-download-directory {{ jenkins_home }}/plugins
   become: yes
   become_user: jenkins
-  notify: restart jenkins
+  notify: Restart Jenkins
 
 - name: Configure Jenkins service
   template:
     src: jenkins.service.j2
     dest: /lib/systemd/system/jenkins.service
     mode: '0644'
-  notify: restart jenkins
+  notify: Restart Jenkins
 
 - name: Reload systemd daemon
   systemd:
     daemon_reload: yes
-  notify: restart jenkins
+  notify: Restart Jenkins
 
 - name: Ensure proper permissions on Jenkins home
   file:
@@ -104,3 +104,16 @@
     group: jenkins
     recurse: yes
     state: directory
+
+- name: Add jenkins user to docker group
+  user:
+    name: jenkins
+    groups: docker
+    append: yes
+  notify: Restart Jenkins
+
+- name: Create handlers directory
+  file:
+    path: "{{ role_path }}/handlers"
+    state: directory
+    mode: '0755'

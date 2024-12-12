@@ -15,15 +15,9 @@
     port: 22
     proto: tcp
 
-- name: Allow HTTPS
+- name: Allow HTTP
   ufw:
     rule: allow
-    port: 443
-    proto: tcp
-
-- name: Deny HTTP
-  ufw:
-    rule: deny
     port: 80
     proto: tcp
 

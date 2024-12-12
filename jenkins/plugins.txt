@@ -1,0 +1,8 @@
+configuration-as-code:latest
+job-dsl:latest
+workflow-aggregator:latest
+git:latest
+role-strategy:latest
+credentials:latest
+cloudbees-folder:latest
+parameterized-trigger:latest

@@ -1,14 +1,11 @@
 ---
-- name: Install Nginx and Certbot
+- name: Install Nginx
   apt:
-    name:
-      - nginx
-      - certbot
-      - python3-certbot-nginx
+    name: nginx
     state: present
     update_cache: yes
 
-- name: Configure Nginx for Jenkins with SSL
+- name: Configure Nginx for Jenkins
   template:
     src: jenkins.nginx.conf.j2
     dest: /etc/nginx/sites-available/jenkins
@@ -33,13 +30,3 @@
     name: nginx
     state: started
     enabled: yes
-
-- name: Generate SSL certificate
-  command: >
-    certbot --nginx 
-    --non-interactive 
-    --agree-tos 
-    --email {{ ssl_email }} 
-    --domains {{ ssl_domain }}
-    --redirect
-  when: ssl_domain is defined and ssl_email is defined
