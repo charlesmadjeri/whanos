@@ -4,9 +4,8 @@ languages.each { lang ->
     freeStyleJob("Whanos base images/whanos-${lang}") {
         steps {
             shell("""
-                cd /images/${lang}
+                cd /opt/whanos/images/${lang}
                 docker build -t whanos-${lang}-base:latest -f Dockerfile.base .
-                # PUSH TO DOCKER REGISTRY
             """)
         }
     }

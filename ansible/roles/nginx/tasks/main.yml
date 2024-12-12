@@ -1,0 +1,45 @@
+---
+- name: Install Nginx and Certbot
+  apt:
+    name:
+      - nginx
+      - certbot
+      - python3-certbot-nginx
+    state: present
+    update_cache: yes
+
+- name: Configure Nginx for Jenkins with SSL
+  template:
+    src: jenkins.nginx.conf.j2
+    dest: /etc/nginx/sites-available/jenkins
+    mode: '0644'
+  notify: reload nginx
+
+- name: Enable Jenkins site
+  file:
+    src: /etc/nginx/sites-available/jenkins
+    dest: /etc/nginx/sites-enabled/jenkins
+    state: link
+  notify: reload nginx
+
+- name: Remove default Nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: reload nginx
+
+- name: Start and enable Nginx
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Generate SSL certificate
+  command: >
+    certbot --nginx 
+    --non-interactive 
+    --agree-tos 
+    --email {{ ssl_email }} 
+    --domains {{ ssl_domain }}
+    --redirect
+  when: ssl_domain is defined and ssl_email is defined

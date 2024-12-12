@@ -1,0 +1,9 @@
+---
+- name: Setup Whanos on Debian VPS
+  hosts: whanos
+  become: yes
+  roles:
+    - ufw
+    - docker
+    - jenkins
+    - nginx 

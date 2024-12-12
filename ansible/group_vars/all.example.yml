@@ -1,0 +1,11 @@
+# VPS Configuration
+vps_ip: ""
+vps_root_password: ""
+
+# Jenkins Configuration
+jenkins_admin_password: "change_me"
+jenkins_url: "http://{{ vps_ip }}"
+
+# Paths
+jenkins_home: "/var/lib/jenkins"
+whanos_root: "/opt/whanos" 

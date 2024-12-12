@@ -136,5 +136,4 @@ coverage.xml
 
 # Environment files
 .env
-.env.*
-!.env.example
+ansible/group_vars/all.yml

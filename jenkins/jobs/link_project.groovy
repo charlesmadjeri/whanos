@@ -67,7 +67,7 @@ freeStyleJob('link-project') {
                             if [ -f Dockerfile ]; then
                                 docker build -t \\\${PROJECT_NAME}:latest --build-arg BASE_IMAGE=whanos-\\\$LANGUAGE-base:latest .
                             else
-                                docker build -t \\\${PROJECT_NAME}:latest -f /images/\\\$LANGUAGE/Dockerfile .
+                                docker build -t \\\${PROJECT_NAME}:latest -f /opt/whanos/images/\\\$LANGUAGE/Dockerfile .
                             fi
                             # PUSH TO DOCKER REGISTRY
                             

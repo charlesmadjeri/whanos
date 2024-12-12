@@ -1,0 +1,7 @@
+all:
+  hosts:
+    whanos:
+      ansible_host: "{{ vps_ip }}"
+      ansible_user: root
+      ansible_password: "{{ vps_root_password }}"
+      ansible_become: yes 

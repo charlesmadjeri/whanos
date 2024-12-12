@@ -35,11 +35,8 @@ unclassified:
   location:
     adminAddress: "contact@email.fr"
     url: "${JENKINS_URL:-http://localhost:8080}"
-  scmGit:
-    globalConfigName: "${GIT_USERNAME:-Whanos}"
-    globalConfigEmail: "${GIT_EMAIL:-whanos@jenkins.local}"
 
 jobs:
-  - file: /jenkins/jobs/folders.groovy
-  - file: /jenkins/jobs/base_images_jobs.groovy
-  - file: /jenkins/jobs/link_project.groovy
+  - file: /opt/whanos/jenkins/jobs/folders.groovy
+  - file: /opt/whanos/jenkins/jobs/base_images_jobs.groovy
+  - file: /opt/whanos/jenkins/jobs/link_project.groovy

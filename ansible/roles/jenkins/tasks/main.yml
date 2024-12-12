@@ -1,0 +1,106 @@
+---
+- name: Add Jenkins apt key
+  apt_key:
+    url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+    state: present
+
+- name: Add Jenkins repository
+  apt_repository:
+    repo: "deb https://pkg.jenkins.io/debian-stable binary/"
+    state: present
+
+- name: Install Java
+  apt:
+    name: openjdk-17-jdk
+    state: present
+    update_cache: yes
+
+- name: Install Jenkins
+  apt:
+    name: jenkins
+    state: present
+    update_cache: yes
+
+- name: Create Jenkins directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: '0755'
+  with_items:
+    - "{{ jenkins_home }}"
+    - "{{ whanos_root }}"
+    - "{{ whanos_root }}/jenkins"
+    - "{{ whanos_root }}/images"
+
+- name: Copy Jenkins configuration
+  copy:
+    src: "{{ playbook_dir }}/../jenkins/"
+    dest: "{{ whanos_root }}/jenkins/"
+    owner: jenkins
+    group: jenkins
+    mode: '0755'
+
+- name: Copy images
+  copy:
+    src: "{{ playbook_dir }}/../images/"
+    dest: "{{ whanos_root }}/images/"
+    owner: jenkins
+    group: jenkins
+    mode: '0755'
+
+- name: Start and enable Jenkins service
+  service:
+    name: jenkins
+    state: started
+    enabled: yes
+
+- name: Wait for Jenkins to be available
+  wait_for:
+    path: "{{ jenkins_home }}/secrets/initialAdminPassword"
+    timeout: 300
+
+- name: Create Jenkins plugin directory
+  file:
+    path: "{{ jenkins_home }}/plugins"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: '0755'
+
+- name: Download Jenkins plugin manager
+  get_url:
+    url: https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/2.12.11/jenkins-plugin-manager-2.12.11.jar
+    dest: /usr/local/bin/jenkins-plugin-manager.jar
+    mode: '0755'
+
+- name: Install Jenkins plugins using plugin manager
+  command: >
+    java -jar /usr/local/bin/jenkins-plugin-manager.jar 
+    --war /usr/share/java/jenkins.war 
+    --plugin-file {{ whanos_root }}/jenkins/plugins.txt 
+    --plugin-download-directory {{ jenkins_home }}/plugins
+  become: yes
+  become_user: jenkins
+  notify: restart jenkins
+
+- name: Configure Jenkins service
+  template:
+    src: jenkins.service.j2
+    dest: /lib/systemd/system/jenkins.service
+    mode: '0644'
+  notify: restart jenkins
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  notify: restart jenkins
+
+- name: Ensure proper permissions on Jenkins home
+  file:
+    path: "{{ jenkins_home }}"
+    owner: jenkins
+    group: jenkins
+    recurse: yes
+    state: directory
