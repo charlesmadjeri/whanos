@@ -3,10 +3,7 @@ def languages = ['javascript', 'python', 'java', 'befunge', 'c']
 languages.each { lang ->
     freeStyleJob("Whanos base images/whanos-${lang}") {
         steps {
-            shell("""
-                cd /opt/whanos/images/${lang}
-                docker build -t whanos-${lang}-base:latest -f Dockerfile.base .
-            """)
+            shell('/opt/whanos/jenkins/scripts/build_base_image.sh ' + lang)
         }
     }
 }

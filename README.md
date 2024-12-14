@@ -24,14 +24,20 @@
 The project includes several make targets for running the playbook:
 
 ```bash
-# Basic run
-make run
+# Run the testing local docker compose to setup the local jenkins and docker setup
+make run-local
 
-# Run with verbose output
-make run-verbose
+# Reset the local docker compose setup and run it again
+make run-local-reset
 
-# Run with very verbose output (debug mode)
-make run-very-verbose
+# Run Ansible to setup a VPS with jenkins and Docker ready to use
+make run-ansible
+
+# Run Ansible with verbose output
+make run-ansible-verbose
+
+# Run Ansible with very verbose output (debug mode)
+make run-ansible-very-verbose
 ```
 
 ## Documentation

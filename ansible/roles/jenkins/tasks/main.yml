@@ -21,6 +21,12 @@
     state: present
     update_cache: yes
 
+- name: Remove existing files TO REMOVE
+  file:
+    path: "{{ whanos_root }}"
+    state: absent
+  notify: Restart Jenkins
+
 - name: Create Jenkins directories
   file:
     path: "{{ item }}"
@@ -34,7 +40,7 @@
     - "{{ whanos_root }}/jenkins"
     - "{{ whanos_root }}/images"
 
-- name: Copy Jenkins configuration
+- name: Copy Jenkins files
   copy:
     src: "{{ playbook_dir }}/../jenkins/"
     dest: "{{ whanos_root }}/jenkins/"

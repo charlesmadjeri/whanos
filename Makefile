@@ -27,14 +27,37 @@ help:
 	{ lastLine = $$0 }' $(MAKEFILE_LIST)
 	@printf '\n'
 
+## Run the local docker compose
+run-local:
+	docker compose up -d
+
+## Build the local docker compose
+run-local-build:
+	docker compose build
+
+## Stop the local docker compose
+run-local-down:
+	docker compose down
+
+## Restart the local docker compose
+run-local-restart:
+	docker compose restart
+
+## Reset the local docker compose
+run-local-reset: run-local-down run-local-clean run-local-build run-local
+
+## Clean the local docker compose
+run-local-clean:
+	docker compose down --volumes --remove-orphans
+
 ## Run the playbook to setup the server
-run:
+run-ansible:
 	ansible-playbook -i ansible/inventory.yml ansible/playbook.yml
 
 ## Run the playbook to setup the server in verbose mode
-run-verbose:
+run-ansible-verbose:
 	ansible-playbook -i ansible/inventory.yml ansible/playbook.yml -vvv
 
 ## Run the playbook to setup the server in very verbose mode
-run-very-verbose:
+run-ansible-very-verbose:
 	ansible-playbook -i ansible/inventory.yml ansible/playbook.yml -vvvvv
