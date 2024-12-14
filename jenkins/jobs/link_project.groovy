@@ -30,6 +30,13 @@ freeStyleJob('link-project') {
                         scm('* * * * *')
                     }
                     
+                    wrappers {
+                        credentialsBinding {
+                            string('REGISTRY_TOKEN', 'do-registry-token')
+                            string('REGISTRY_USERNAME', 'do-registry-username')
+                        }
+                    }
+                    
                     steps {
                         shell('/opt/whanos/jenkins/scripts/build_project.sh')
                     }

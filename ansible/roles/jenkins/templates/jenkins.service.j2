@@ -8,12 +8,14 @@ Type=simple
 User=jenkins
 Group=jenkins
 Environment="JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64"
+Environment="JAVA_OPTS=-Djenkins.install.runSetupWizard=false"
 Environment="JENKINS_HOME={{ jenkins_home }}"
-Environment="CASC_JENKINS_CONFIG={{ whanos_root }}/jenkins/casc/jenkins-config.yml"
 Environment="JENKINS_PLUGIN_DIR={{ jenkins_home }}/plugins"
 Environment="JENKINS_ADMIN_PASSWORD={{ jenkins_admin_password }}"
 Environment="JENKINS_URL={{ jenkins_url }}"
-Environment="JAVA_OPTS=-Djenkins.install.runSetupWizard=false"
+Environment="CASC_JENKINS_CONFIG={{ whanos_root }}/jenkins/casc/jenkins-config.yml"
+Environment="REGISTRY_USERNAME={{ registry_username }}"
+Environment="REGISTRY_TOKEN={{ registry_token }}"
 
 ExecStart=/usr/bin/java ${JAVA_OPTS} -jar /usr/share/java/jenkins.war
 Restart=on-failure

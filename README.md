@@ -11,13 +11,10 @@
 2. Copy the example configuration:
    ```bash
    cp ansible/group_vars/all.example.yml ansible/group_vars/all.yml
+   cp jenkins/.env.example jenkins/.env # Optionnal, for local development purposes
    ```
-3. Configure your variables in `all.yml`:
-   ```yaml
-   vps_ip: "your_vps_ip"
-   vps_root_password: "your_root_password"
-   jenkins_admin_password: "your_jenkins_password"
-   ```
+3. Configure your variables in `all.yml` based on `all.example.yml`
+4. Configure your credentials in `jenkins/.env` based on `jenkins/.env.example` (only for local development purposes)
 
 ## Running the Playbook
 
