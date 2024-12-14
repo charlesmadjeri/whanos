@@ -40,3 +40,18 @@ jobs:
   - file: /opt/whanos/jenkins/jobs/folders.groovy
   - file: /opt/whanos/jenkins/jobs/base_images_jobs.groovy
   - file: /opt/whanos/jenkins/jobs/link_project.groovy
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - string:
+              scope: GLOBAL
+              id: "do-registry-token"
+              secret: "${REGISTRY_TOKEN}"
+              description: "DigitalOcean Registry Token"
+          - string:
+              scope: GLOBAL
+              id: "do-registry-username"
+              secret: "${REGISTRY_USERNAME}"
+              description: "DigitalOcean Registry Username"

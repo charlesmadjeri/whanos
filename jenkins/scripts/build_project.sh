@@ -5,6 +5,9 @@ echo "WORKSPACE: ${WORKSPACE}"
 DOCKER_TAG=$(echo "${JOB_NAME}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]//g')
 echo "DOCKER_TAG: ${DOCKER_TAG}"
 
+echo "Logging into DigitalOcean registry..."
+echo "$REGISTRY_TOKEN" | docker login registry.digitalocean.com -u "$REGISTRY_USERNAME" --password-stdin
+
 if [ -f Makefile ]; then
     LANGUAGE="c"
 elif [ -f app/pom.xml ]; then
@@ -38,13 +41,15 @@ fi
 
 if [ -f Dockerfile ]; then
     echo "Building with custom Dockerfile..."
-    docker build -t "${DOCKER_TAG}:latest" --build-arg BASE_IMAGE="whanos-${LANGUAGE}-base:latest" .
+    docker build -t "${DOCKER_TAG}:latest" --build-arg BASE_IMAGE="registry.digitalocean.com/whanos-container-registry/whanos:${LANGUAGE}-base" .
 else
     echo "Building with standalone Dockerfile..."
     docker build -t "${DOCKER_TAG}:latest" -f "/opt/whanos/images/${LANGUAGE}/Dockerfile.standalone" .
 fi
 
-# PUSH TO DOCKER REGISTRY
+echo "Tagging and pushing to DigitalOcean registry..."
+docker tag "${DOCKER_TAG}:latest" "registry.digitalocean.com/whanos-container-registry/whanos:${DOCKER_TAG}"
+docker push "registry.digitalocean.com/whanos-container-registry/whanos:${DOCKER_TAG}"
 
 if [ -f whanos.yml ]; then
     echo "Applying Kubernetes configuration..."

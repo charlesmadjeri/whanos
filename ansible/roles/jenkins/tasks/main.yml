@@ -1,4 +1,10 @@
 ---
+- name: Remove existing files TO REMOVE
+  file:
+    path: "{{ whanos_root }}"
+    state: absent
+  notify: Restart Jenkins
+
 - name: Add Jenkins apt key
   apt_key:
     url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
@@ -20,12 +26,6 @@
     name: jenkins
     state: present
     update_cache: yes
-
-- name: Remove existing files TO REMOVE
-  file:
-    path: "{{ whanos_root }}"
-    state: absent
-  notify: Restart Jenkins
 
 - name: Create Jenkins directories
   file:
@@ -61,11 +61,6 @@
     name: jenkins
     state: started
     enabled: yes
-
-- name: Wait for Jenkins to be available
-  wait_for:
-    path: "{{ jenkins_home }}/secrets/initialAdminPassword"
-    timeout: 300
 
 - name: Create Jenkins plugin directory
   file:
