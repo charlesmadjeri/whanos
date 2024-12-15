@@ -4,9 +4,16 @@ freeStyleJob('link-project') {
         stringParam('PROJECT_NAME', '', 'Name of the project')
         stringParam('GIT_BRANCH', 'main', 'Git branch to build (default: main)')
         credentialsParam('GIT_CREDENTIALS') {
-            type('com.cloudbees.plugins.credentials.common.StandardCredentials')
+            type('com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl')
             required(false)
-            description('Credentials to use for private repository (username/password or SSH key)')
+            defaultValue('')
+            description('Credentials to use for private repository (username/password)')
+        }
+        credentialsParam('GIT_SSH_KEY') {
+            type('com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey')
+            required(false)
+            defaultValue('')
+            description('SSH key to use for private repository')
         }
     }
 
@@ -21,8 +28,16 @@ freeStyleJob('link-project') {
                                 if (GIT_CREDENTIALS) {
                                     credentials(GIT_CREDENTIALS)
                                 }
+                                if (GIT_SSH_KEY) {
+                                    credentials(GIT_SSH_KEY)
+                                }
                             }
                             branch("*/${GIT_BRANCH}")
+                            extensions {
+                                cloneOptions {
+                                    timeout(10)
+                                }
+                            }
                         }
                     }
                     

@@ -1,23 +1,13 @@
-FROM node:20.9-alpine
+FROM node:14.17.5-alpine
 
 RUN apk add --no-cache bash
+
 SHELL ["/bin/bash", "-c"]
 
-WORKDIR /app
+ONBUILD COPY . /app
 
-RUN npm install -g typescript
+ONBUILD WORKDIR /app
 
-ONBUILD COPY package*.json ./
-ONBUILD RUN npm install --production && rm package*.json
+ONBUILD RUN npm install --production=false
 
-ONBUILD COPY . .
-ONBUILD RUN if [ -f "tsconfig.json" ]; then \
-        npm install --save-dev typescript && \
-        npx tsc && \
-        rm -rf $(find . -name "*.ts" ! -name "*.d.ts") && \
-        npm uninstall typescript; \
-    fi
-
-ONBUILD RUN rm -rf Dockerfile* .git*
-
-ONBUILD CMD ["node", "."]
+ONBUILD CMD [ "node", "." ]

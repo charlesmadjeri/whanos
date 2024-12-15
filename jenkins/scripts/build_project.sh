@@ -39,19 +39,43 @@ if [ ${COUNT} -gt 1 ]; then
     exit 1
 fi
 
+BASE_IMAGE="registry.digitalocean.com/whanos-container-registry/whanos-${LANGUAGE}"
+
 if [ -f Dockerfile ]; then
     echo "Building with custom Dockerfile..."
-    docker build -t "${DOCKER_TAG}:latest" --build-arg BASE_IMAGE="registry.digitalocean.com/whanos-container-registry/whanos:${LANGUAGE}-base" .
+    docker build -t "${DOCKER_TAG}:latest" \
+        --build-arg BASE_IMAGE="${BASE_IMAGE}" \
+        --no-cache \
+        .
 else
     echo "Building with standalone Dockerfile..."
-    docker build -t "${DOCKER_TAG}:latest" -f "/opt/whanos/images/${LANGUAGE}/Dockerfile.standalone" .
+    docker build -t "${DOCKER_TAG}:latest" \
+        -f "/opt/whanos/images/${LANGUAGE}/Dockerfile.standalone" \
+        --no-cache \
+        .
+fi
+
+# Check if build was successful
+if [ $? -ne 0 ]; then
+    echo "Docker build failed"
+    exit 1
 fi
 
 echo "Tagging and pushing to DigitalOcean registry..."
-docker tag "${DOCKER_TAG}:latest" "registry.digitalocean.com/whanos-container-registry/whanos:${DOCKER_TAG}"
-docker push "registry.digitalocean.com/whanos-container-registry/whanos:${DOCKER_TAG}"
+FULL_TAG="registry.digitalocean.com/whanos-container-registry/${DOCKER_TAG}"
+docker tag "${DOCKER_TAG}:latest" "${FULL_TAG}:latest"
+docker push "${FULL_TAG}:latest"
+
+if [ $? -ne 0 ]; then
+    echo "Failed to push image to registry"
+    exit 1
+fi
 
 if [ -f whanos.yml ]; then
     echo "Applying Kubernetes configuration..."
+    if ! command -v kubectl &> /dev/null; then
+        echo "kubectl not found, skipping Kubernetes deployment"
+        exit 0
+    fi
     kubectl apply -f whanos.yml
 fi 

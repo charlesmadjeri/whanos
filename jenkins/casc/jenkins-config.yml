@@ -23,13 +23,13 @@ jenkins:
   remotingSecurity:
     enabled: true
   systemMessage: "Welcome to the Whanos instance."
-  views:
-  - all:
-      name: "all"
+
 
 security:
   globalJobDslSecurityConfiguration:
     useScriptSecurity: false
+  gitHostKeyVerificationConfiguration:
+    sshHostKeyVerificationStrategy: "acceptFirstConnectionStrategy"
 
 unclassified:
   location:
