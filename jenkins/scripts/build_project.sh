@@ -62,9 +62,9 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Tagging and pushing to DigitalOcean registry..."
-FULL_TAG="registry.digitalocean.com/whanos-container-registry/${DOCKER_TAG}"
-docker tag "${DOCKER_TAG}:latest" "${FULL_TAG}:latest"
-docker push "${FULL_TAG}:latest"
+FULL_TAG="registry.digitalocean.com/whanos-container-registry/whanos:${DOCKER_TAG}"
+docker tag "${DOCKER_TAG}:latest" "${FULL_TAG}"
+docker push "${FULL_TAG}"
 
 if [ $? -ne 0 ]; then
     echo "Failed to push image to registry"
