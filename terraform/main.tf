@@ -47,6 +47,24 @@ variable "ssh_keys" {
   default     = []
 }
 
+resource "digitalocean_droplet" "web" {
+  count  = var.droplet_count  # Number of droplets to create
+  name   = "whanos-vps-${count.index + 1}"  # Unique droplet names
+  region = var.region         # Specify the region (e.g., nyc1, sfo3)
+  size   = var.size           # Droplet size (e.g., s-1vcpu-1gb)
+  image  = var.image          # Base image (e.g., ubuntu-22-04-x64)
+  ssh_keys = var.ssh_keys
+
+  tags = ["web", "terraform"] # Tags for the droplets
+}
+
+resource "local_file" "vps_config" {
+  filename = "../ansible/group_vars/all.example.yml" # Output file path
+  content  = templatefile("./vps_config.tpl.yml", {
+    vps_ip = digitalocean_droplet.web[0].ipv4_address
+  })
+}
+
 resource "digitalocean_kubernetes_cluster" "my_k8s_cluster" {
   name   = "example-cluster"
   region = "nyc1"  # Change to your preferred region
@@ -64,17 +82,3 @@ output "kubeconfig" {
   sensitive = true
 }
 
-resource "digitalocean_droplet" "web" {
-  count  = var.droplet_count  # Number of droplets to create
-  name   = "whanos-vps-${count.index + 1}"  # Unique droplet names
-  region = var.region         # Specify the region (e.g., nyc1, sfo3)
-  size   = var.size           # Droplet size (e.g., s-1vcpu-1gb)
-  image  = var.image          # Base image (e.g., ubuntu-22-04-x64)
-  ssh_keys = var.ssh_keys
-
-  tags = ["web", "terraform"] # Tags for the droplets
-}
-
-output "droplet_ips" {
-  value = digitalocean_droplet.web.*.ipv4_address
-}
