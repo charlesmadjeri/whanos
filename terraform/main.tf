@@ -66,7 +66,7 @@ output "kubeconfig" {
 
 resource "digitalocean_droplet" "web" {
   count  = var.droplet_count  # Number of droplets to create
-  name   = "web-${count.index + 1}"  # Unique droplet names
+  name   = "whanos-vps-${count.index + 1}"  # Unique droplet names
   region = var.region         # Specify the region (e.g., nyc1, sfo3)
   size   = var.size           # Droplet size (e.g., s-1vcpu-1gb)
   image  = var.image          # Base image (e.g., ubuntu-22-04-x64)
