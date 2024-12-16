@@ -16,6 +16,7 @@ Environment="JENKINS_URL={{ jenkins_url }}"
 Environment="CASC_JENKINS_CONFIG={{ whanos_root }}/jenkins/casc/jenkins-config.yml"
 Environment="REGISTRY_USERNAME={{ registry_username }}"
 Environment="REGISTRY_TOKEN={{ registry_token }}"
+Environment="KUBECONFIG_PATH={{ kubeconfig_path }}"
 
 ExecStart=/usr/bin/java ${JAVA_OPTS} -jar /usr/share/java/jenkins.war
 Restart=on-failure

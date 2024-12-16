@@ -1,9 +1,6 @@
 #!/bin/bash
 
-echo "WORKSPACE: ${WORKSPACE}"
-
 DOCKER_TAG=$(echo "${JOB_NAME}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]//g')
-echo "DOCKER_TAG: ${DOCKER_TAG}"
 
 echo "Logging into DigitalOcean registry..."
 echo "$REGISTRY_TOKEN" | docker login registry.digitalocean.com -u "$REGISTRY_USERNAME" --password-stdin
@@ -71,11 +68,22 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Export variables for other scripts
+echo "DOCKER_TAG=${DOCKER_TAG}" > build.env
+echo "FULL_TAG=${FULL_TAG}" >> build.env 
+
 if [ -f whanos.yml ]; then
-    echo "Applying Kubernetes configuration..."
-    if ! command -v kubectl &> /dev/null; then
-        echo "kubectl not found, skipping Kubernetes deployment"
-        exit 0
-    fi
-    kubectl apply -f whanos.yml
+    # Export variables for Jenkins to use
+    REPLICAS=$(yq e '.deployment.replicas // 1' whanos.yml)
+    MEMORY_LIMITS=$(yq e '.deployment.resources.limits.memory // "128M"' whanos.yml)
+    MEMORY_REQUESTS=$(yq e '.deployment.resources.requests.memory // "64M"' whanos.yml)
+    PORT=$(yq e '.deployment.ports[0] // ""' whanos.yml)
+
+    # Export for Jenkins environment
+    echo "REPLICAS=${REPLICAS}" > whanos.env
+    echo "MEMORY_LIMITS=${MEMORY_LIMITS}" >> whanos.env
+    echo "MEMORY_REQUESTS=${MEMORY_REQUESTS}" >> whanos.env
+    echo "PORT=${PORT}" >> whanos.env
+    echo "DOCKER_TAG=${DOCKER_TAG}" >> whanos.env
+    echo "FULL_TAG=${FULL_TAG}" >> whanos.env
 fi 

@@ -50,10 +50,24 @@ freeStyleJob('link-project') {
                             string('REGISTRY_TOKEN', 'do-registry-token')
                             string('REGISTRY_USERNAME', 'do-registry-username')
                         }
+                        environmentVariables {
+                            env('KUBECONFIG', '/var/lib/jenkins/kube/config')
+                        }
                     }
                     
                     steps {
-                        shell('/opt/whanos/jenkins/scripts/build_project.sh')
+                        shell('echo "Step 1: Building and pushing Docker image..." && /opt/whanos/jenkins/scripts/build_project.sh')
+                        shell("""#!/bin/bash
+                            echo "Step 2: Processing Kubernetes deployment..."
+                            if [ -f whanos.yml ]; then
+                                set -a
+                                . whanos.env
+                                set +a
+                                /opt/whanos/jenkins/scripts/apply_k8s.sh
+                            else
+                                echo "No whanos.yml found, skipping deployment"
+                            fi
+                        """.stripIndent())
                     }
                 }
             '''.stripIndent())

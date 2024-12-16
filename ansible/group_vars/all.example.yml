@@ -13,4 +13,8 @@ whanos_root: "/opt/whanos"
 # DigitalOcean Container Registry
 # Required for pushing images to DigitalOcean Container Registry
 registry_username: "" # Your DigitalOcean email
-registry_token: ""    # Your DigitalOcean API token with registry access
+registry_token: ""    # Your DigitalOcean API token
+
+# Kubernetes Configuration
+local_kubeconfig_path: "{{ playbook_dir }}/../kubeconfig.yaml"
+kubeconfig_path: "{{ jenkins_home }}/kube/config"

@@ -6,3 +6,5 @@ role-strategy:latest
 credentials:latest
 cloudbees-folder:latest
 parameterized-trigger:latest
+envinject:latest
+kubernetes-cli:latest

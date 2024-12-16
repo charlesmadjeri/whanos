@@ -4,6 +4,7 @@
 - Ansible installed on your local machine
 - A Debian-based VPS
 - SSH access to the VPS
+- A valid Kubernetes configuration file named kubeconfig.yaml in the project root
 
 ## Initial Setup
 
@@ -11,10 +12,14 @@
 2. Copy the example configuration:
    ```bash
    cp ansible/group_vars/all.example.yml ansible/group_vars/all.yml
-   cp jenkins/.env.example jenkins/.env # Optionnal, for local development purposes
+   cp jenkins/.env.example jenkins/.env # Optional, for local development purposes
    ```
 3. Configure your variables in `all.yml` based on `all.example.yml`
-4. Configure your credentials in `jenkins/.env` based on `jenkins/.env.example` (only for local development purposes)
+4. Copy your Kubernetes config to the project root:
+    ```bash
+    cp ~/.kube/config kubeconfig.yaml
+    ```
+5. Configure your credentials in `jenkins/.env` based on `jenkins/.env.example` (only for local development purposes)
 
 ## Running the Playbook
 

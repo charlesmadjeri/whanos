@@ -12,6 +12,12 @@ services:
       - dockerd
       - --host=tcp://0.0.0.0:2375
       - --host=unix:///var/run/docker.sock
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - whanos-network
+
   jenkins:
     build:
       context: .
@@ -23,11 +29,24 @@ services:
     restart: unless-stopped
     ports:
       - 8080:8080
+      - 50000:50000
     environment:
       - DOCKER_HOST=tcp://docker-dind:2375
     depends_on:
       - docker-dind
     volumes:
-      - jenkins-data:/var/jenkins_home
+      - jenkins-data:/var/lib/jenkins
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./kubeconfig.yaml:/var/lib/jenkins/kube/config
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - whanos-network
+
+networks:
+  whanos-network:
+    driver: bridge
+
 volumes:
   jenkins-data:

@@ -5,6 +5,12 @@
     state: absent
   notify: Restart Jenkins
 
+- name: Remove existing files TO REMOVE
+  file:
+    path: "{{ jenkins_home }}"
+    state: absent
+  notify: Restart Jenkins
+
 - name: Add Jenkins apt key
   apt_key:
     url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
@@ -15,15 +21,24 @@
     repo: "deb https://pkg.jenkins.io/debian-stable binary/"
     state: present
 
-- name: Install Java
-  apt:
-    name: openjdk-17-jdk
-    state: present
-    update_cache: yes
+- name: Install yq
+  get_url:
+    url: https://github.com/mikefarah/yq/releases/download/v4.35.1/yq_linux_amd64
+    dest: /usr/local/bin/yq
+    mode: '0755'
 
-- name: Install Jenkins
+- name: Download Jenkins plugin manager
+  get_url:
+    url: https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/2.12.11/jenkins-plugin-manager-2.12.11.jar
+    dest: /usr/local/bin/jenkins-plugin-manager.jar
+    mode: '0755'
+
+- name: Install required packages
   apt:
-    name: jenkins
+    name:
+      - jenkins
+      - openjdk-17-jdk
+      - gettext-base  # for envsubst
     state: present
     update_cache: yes
 
@@ -36,9 +51,26 @@
     mode: '0755'
   with_items:
     - "{{ jenkins_home }}"
+    - "{{ jenkins_home }}/kube"
+    - "{{ jenkins_home }}/plugins"
     - "{{ whanos_root }}"
     - "{{ whanos_root }}/jenkins"
     - "{{ whanos_root }}/images"
+
+- name: Start and enable Jenkins service
+  service:
+    name: jenkins
+    state: started
+    enabled: yes
+
+- name: Ensure Jenkins home directory permissions
+  file:
+    path: "{{ jenkins_home }}"
+    owner: jenkins
+    group: jenkins
+    recurse: yes
+    mode: '0755'
+    state: directory
 
 - name: Copy Jenkins files
   copy:
@@ -56,24 +88,12 @@
     group: jenkins
     mode: '0755'
 
-- name: Start and enable Jenkins service
-  service:
-    name: jenkins
-    state: started
-    enabled: yes
-
-- name: Create Jenkins plugin directory
-  file:
-    path: "{{ jenkins_home }}/plugins"
-    state: directory
+- name: Copy kubeconfig file
+  copy:
+    src: "{{ local_kubeconfig_path }}"
+    dest: "{{ kubeconfig_path }}"
     owner: jenkins
     group: jenkins
-    mode: '0755'
-
-- name: Download Jenkins plugin manager
-  get_url:
-    url: https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/2.12.11/jenkins-plugin-manager-2.12.11.jar
-    dest: /usr/local/bin/jenkins-plugin-manager.jar
     mode: '0755'
 
 - name: Read plugins list
@@ -101,14 +121,6 @@
   systemd:
     daemon_reload: yes
   notify: Restart Jenkins
-
-- name: Ensure proper permissions on Jenkins home
-  file:
-    path: "{{ jenkins_home }}"
-    owner: jenkins
-    group: jenkins
-    recurse: yes
-    state: directory
 
 - name: Add jenkins user to docker group
   user:

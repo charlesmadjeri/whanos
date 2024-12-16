@@ -24,7 +24,6 @@ jenkins:
     enabled: true
   systemMessage: "Welcome to the Whanos instance."
 
-
 security:
   globalJobDslSecurityConfiguration:
     useScriptSecurity: false
@@ -44,14 +43,20 @@ jobs:
 credentials:
   system:
     domainCredentials:
-      - credentials:
-          - string:
-              scope: GLOBAL
-              id: "do-registry-token"
-              secret: "${REGISTRY_TOKEN}"
-              description: "DigitalOcean Registry Token"
-          - string:
-              scope: GLOBAL
-              id: "do-registry-username"
-              secret: "${REGISTRY_USERNAME}"
-              description: "DigitalOcean Registry Username"
+    - credentials:
+      - string:
+          id: "do-registry-token"
+          secret: "${REGISTRY_TOKEN}"
+          description: "DigitalOcean Registry Token"
+          scope: GLOBAL
+      - string:
+          id: "do-registry-username"
+          secret: "${REGISTRY_USERNAME}"
+          description: "DigitalOcean Registry Username"
+          scope: GLOBAL
+      - file:
+          id: "kubernetes-config"
+          description: "Kubernetes config file"
+          fileName: "config"
+          secretBytes: "${KUBECONFIG_CONTENT}"
+          scope: GLOBAL
