@@ -96,6 +96,11 @@ out/
 *.out
 *.app
 
+# Terraform related
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate*
+
 # OS generated files
 .DS_Store
 .DS_Store?

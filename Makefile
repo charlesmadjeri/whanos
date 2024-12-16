@@ -61,3 +61,12 @@ run-ansible-verbose:
 ## Run the playbook to setup the server in very verbose mode
 run-ansible-very-verbose:
 	ansible-playbook -i ansible/inventory.yml ansible/playbook.yml -vvvvv
+
+
+run-terraform:
+	cd terraform; terraform init; terraform plan; terraform apply -auto-approve
+
+run-terraform-reset:
+	cd terraform; rm -rf .terraform/ .terraform.lock.hcl terraform.tfstate
+	
+	
