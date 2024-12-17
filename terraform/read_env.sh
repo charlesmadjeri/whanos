@@ -8,7 +8,7 @@ fi
 
 # Parse the .env file and extract specific variables
 VPS_IP=$(grep '^VPS_IP=' ./.env | cut -d '=' -f2 | tr -d '"')
-VPS_ROOT_PASSWORD=$(grep '^ROOT_PASSWORD=' ./.env | cut -d '=' -f2 | tr -d '"')
+VPS_ROOT_PASSWORD=$(grep '^VPS_ROOT_PASSWORD=' ./.env | cut -d '=' -f2 | tr -d '"')
 JENKINS_ADMIN_PASSWORD=$(grep '^JENKINS_ADMIN_PASSWORD=' ./.env | cut -d '=' -f2 | tr -d '"')
 JENKINS_URL=$(grep '^JENKINS_URL=' ./.env | cut -d '=' -f2 | tr -d '"')
 REGISTRY_USERNAME=$(grep '^REGISTRY_USERNAME=' ./.env | cut -d '=' -f2 | tr -d '"')
