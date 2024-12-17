@@ -102,6 +102,6 @@ output "kubeconfig" {
 }
 
 output "jenkins_droplet_ip" {
-  value = digitalocean_droplet.jenkins.0.ipv4_address
+  value = digitalocean_droplet.web[0].ipv4_address
   description = "The IP address of the Jenkins droplet."
 }
