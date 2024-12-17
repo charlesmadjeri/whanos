@@ -53,7 +53,6 @@ data "external" "env_variables" {
 
 # Extract variables from the external data source
 locals {
-  vps_ip        = data.external.env_variables.result["vps_ip"]
   root_password = data.external.env_variables.result["root_password"]
   jenkins_admin_password = data.external.env_variables.result["jenkins_admin_password"]
   jenkins_url = data.external.env_variables.result["jenkins_url"]
@@ -65,7 +64,7 @@ locals {
 resource "local_file" "ansible_all_yml" {
   filename = "../ansible/group_vars/all.yml"
   content  = <<-EOT
-    vps_ip: "${local.vps_ip}"
+    vps_ip: "${digitalocean_droplet.web[0].ipv4_address}"
     root_password: "${local.root_password}"
     jenkins_admin_password: "${local.jenkins_admin_password}"
     jenkins_url: "${local.jenkins_url}"

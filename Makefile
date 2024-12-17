@@ -67,6 +67,6 @@ run-terraform:
 	cd terraform; terraform init; terraform plan; terraform apply -auto-approve
 
 run-terraform-reset:
-	cd terraform; rm -rf .terraform/ .terraform.lock.hcl terraform.tfstate
+	cd terraform; rm -rf .terraform/ .terraform.lock.hcl terraform.; rm ../ansible/group_vars/all.yml
 	
 	
