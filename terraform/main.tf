@@ -85,13 +85,6 @@ resource "digitalocean_droplet" "web" {
   tags = ["web", "terraform"] # Tags for the droplets
 }
 
-resource "local_file" "vps_config" {
-  filename = "../ansible/group_vars/all.example.yml" # Output file path
-  content  = templatefile("./vps_config.tpl.yml", {
-    vps_ip = digitalocean_droplet.web[0].ipv4_address
-  })
-}
-
 resource "digitalocean_kubernetes_cluster" "my_k8s_cluster" {
   name   = "example-cluster"
   region = "nyc1"  # Change to your preferred region
