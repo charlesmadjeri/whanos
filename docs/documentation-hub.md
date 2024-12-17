@@ -2,7 +2,9 @@
 
 ## [Ansible](ansible/ansible-hub.md)
 
-## [Jenkins](jenkins/jenkins-hub.md)
+## [Jenkins](jenkins/jenkins.md)
+
+## [Terraform](terraform/terraform.md)
 
 ## Go back to:
 

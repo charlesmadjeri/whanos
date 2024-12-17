@@ -65,6 +65,7 @@ run-ansible-very-verbose:
 
 run-terraform:
 	cd terraform; terraform init; terraform plan; terraform apply -auto-approve
+	ansible-playbook -i ansible/inventory.yml ansible/playbook.yml
 
 run-terraform-reset:
 	cd terraform; rm -rf .terraform/ .terraform.lock.hcl terraform.; rm ../ansible/group_vars/all.yml

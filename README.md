@@ -11,10 +11,10 @@
 1. Clone the repository
 2. Copy the example configuration:
    ```bash
-   cp ansible/group_vars/all.example.yml ansible/group_vars/all.yml
+   cp terraform/.env.example terraform/.env
    cp jenkins/.env.example jenkins/.env # Optional, for local development purposes
    ```
-3. Configure your variables in `all.yml` based on `all.example.yml`
+3. Configure your variables in `terraform/.env` based on `terraform/.env.example`
 4. Copy your Kubernetes config to the project root:
     ```bash
     cp ~/.kube/config kubeconfig.yaml
@@ -26,6 +26,9 @@
 The project includes several make targets for running the playbook:
 
 ```bash
+# Run the terraform to setup the VPS, enough for standard users !
+make run-terraform
+
 # Run the testing local docker compose to setup the local jenkins and docker setup
 make run-local
 
