@@ -53,7 +53,7 @@ data "external" "env_variables" {
 
 # Extract variables from the external data source
 locals {
-  root_password = data.external.env_variables.result["root_password"]
+  vps_root_password = data.external.env_variables.result["root_password"]
   jenkins_admin_password = data.external.env_variables.result["jenkins_admin_password"]
   jenkins_url = data.external.env_variables.result["jenkins_url"]
   registry_username = data.external.env_variables.result["registry_username"]
@@ -65,7 +65,7 @@ resource "local_file" "ansible_all_yml" {
   filename = "../ansible/group_vars/all.yml"
   content  = <<-EOT
     vps_ip: "${digitalocean_droplet.web[0].ipv4_address}"
-    root_password: "${local.root_password}"
+    vps_root_password: "${local.root_password}"
     jenkins_admin_password: "${local.jenkins_admin_password}"
     jenkins_url: "${local.jenkins_url}"
     registry_username: "${local.registry_username}"
@@ -101,3 +101,7 @@ output "kubeconfig" {
   sensitive = true
 }
 
+output "jenkins_droplet_ip" {
+  value = digitalocean_droplet.jenkins.0.ipv4_address
+  description = "The IP address of the Jenkins droplet."
+}
