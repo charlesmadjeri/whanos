@@ -47,6 +47,33 @@ variable "ssh_keys" {
   default     = []
 }
 
+data "external" "env_variables" {
+  program = ["./read_env.sh"]
+}
+
+# Extract variables from the external data source
+locals {
+  vps_ip        = data.external.env_variables.result["vps_ip"]
+  root_password = data.external.env_variables.result["root_password"]
+  jenkins_admin_password = data.external.env_variables.result["jenkins_admin_password"]
+  jenkins_url = data.external.env_variables.result["jenkins_url"]
+  registry_username = data.external.env_variables.result["registry_username"]
+  registry_token = data.external.env_variables.result["registry_token"]
+}
+
+# Use the variables in the YAML template
+resource "local_file" "ansible_all_yml" {
+  filename = "../ansible/group_vars/all.yml"
+  content  = <<-EOT
+    vps_ip: "${local.vps_ip}"
+    root_password: "${local.root_password}"
+    jenkins_admin_password: "${local.jenkins_admin_password}"
+    jenkins_url: "${local.jenkins_url}"
+    registry_username: "${local.registry_username}"
+    registry_token: "${local.registry_token}"
+  EOT
+}
+
 resource "digitalocean_droplet" "web" {
   count  = var.droplet_count  # Number of droplets to create
   name   = "whanos-vps-${count.index + 1}"  # Unique droplet names
