@@ -54,10 +54,14 @@ data "external" "env_variables" {
 # Extract variables from the external data source
 locals {
   vps_root_password = data.external.env_variables.result["vps_root_password"]
+  jenkins_casc_cfg = data.external.env_variables.result["jenkins_casc_cfg"]
   jenkins_admin_password = data.external.env_variables.result["jenkins_admin_password"]
   jenkins_url = data.external.env_variables.result["jenkins_url"]
   registry_username = data.external.env_variables.result["registry_username"]
   registry_token = data.external.env_variables.result["registry_token"]
+  jenkins_docker_registry = data.external.env_variables.result["jenkins_docker_registry"]
+  local_kubeconfig_path = data.external.env_variables.result["local_kubeconfig_path"]
+  kubeconfig_path = data.external.env_variables.result["kubeconfig_path"]
 }
 
 # Use the variables in the YAML template
@@ -70,6 +74,10 @@ resource "local_file" "ansible_all_yml" {
     jenkins_url: "${local.jenkins_url}"
     registry_username: "${local.registry_username}"
     registry_token: "${local.registry_token}"
+    jenkins_casc_cfg: "${local.jenkins_casc_cfg}"
+    jenkins_docker_registry: "${local.jenkins_docker_registry}"
+    local_kubeconfig_path: "${local.local_kubeconfig_path}"
+    kubeconfig_path: "${local.kubeconfig_path}"
   EOT
 }
 
