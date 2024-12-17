@@ -18,7 +18,7 @@ REGISTRY_TOKEN=$(grep '^REGISTRY_TOKEN=' ./.env | cut -d '=' -f2 | tr -d '"')
 cat <<EOF
 {
   "vps_ip": "${VPS_IP}",
-  "root_password": "${ROOT_PASSWORD}",
+  "vps_root_password": "${VPS_ROOT_PASSWORD}",
   "jenkins_admin_password": "${JENKINS_ADMIN_PASSWORD}",
   "jenkins_url": "${JENKINS_URL}",
   "registry_username": "${REGISTRY_USERNAME}",
