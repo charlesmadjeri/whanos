@@ -36,6 +36,10 @@ PORT_COUNT=$(yq e '.deployment.ports // [] | length' whanos.yml)
 
 echo "Creating Kubernetes manifest..."
 
+# Mutable registry tags (…:projectname) need Always + a changing annotation,
+# otherwise apply is a no-op and nodes keep a cached digest (IfNotPresent).
+export WHANOS_BUILD_ID="${BUILD_NUMBER:-${BUILD_ID:-$(date +%s)}}"
+
 # Deployment (always)
 yq -n "
 .apiVersion = \"apps/v1\" |
@@ -45,8 +49,10 @@ yq -n "
 .spec.replicas = ${REPLICAS} |
 .spec.selector.matchLabels.app = strenv(DOCKER_TAG) |
 .spec.template.metadata.labels.app = strenv(DOCKER_TAG) |
+.spec.template.metadata.annotations.\"whanos/build\" = strenv(WHANOS_BUILD_ID) |
 .spec.template.spec.containers[0].name = strenv(DOCKER_TAG) |
-.spec.template.spec.containers[0].image = strenv(FULL_TAG)
+.spec.template.spec.containers[0].image = strenv(FULL_TAG) |
+.spec.template.spec.containers[0].imagePullPolicy = \"Always\"
 " > k8s-manifest.yml
 
 if [ "$(yq e '.deployment | has("resources")' whanos.yml)" = "true" ]; then
