@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 LANGUAGE=$1
 
 if [ -z "$LANGUAGE" ]; then
@@ -24,13 +26,23 @@ IMAGE_REF="${REGISTRY_HOST}/${REGISTRY_NAME}/whanos:whanos-${LANGUAGE}"
 echo "Logging into registry ${REGISTRY_HOST}..."
 echo "$REGISTRY_TOKEN" | docker login "${REGISTRY_HOST}" -u "$REGISTRY_USERNAME" --password-stdin
 
-cd /opt/whanos/images/${LANGUAGE}
+cd "/opt/whanos/images/${LANGUAGE}"
 
 echo "Building base image..."
-docker build -t whanos-${LANGUAGE}:latest - < Dockerfile.base
+docker build --no-cache -t "whanos-${LANGUAGE}:latest" - < Dockerfile.base
 
-echo "Tagging base image as ${IMAGE_REF}..."
-docker tag whanos-${LANGUAGE}:latest "${IMAGE_REF}"
+echo "Tagging as ${IMAGE_REF}..."
+docker tag "whanos-${LANGUAGE}:latest" "${IMAGE_REF}"
 
-echo "Pushing base image..."
-docker push "${IMAGE_REF}"
+echo "Pushing ${IMAGE_REF}..."
+for attempt in 1 2 3; do
+    if docker push "${IMAGE_REF}"; then
+        echo "Push succeeded"
+        exit 0
+    fi
+    echo "Push attempt ${attempt} failed; waiting..."
+    sleep $((attempt * 15))
+done
+
+echo "Error: failed to push ${IMAGE_REF}"
+exit 1
