@@ -56,6 +56,51 @@
     dest: /usr/local/bin/jenkins-plugin-manager.jar
     mode: '0755'
 
+# Small droplets mount /tmp as tmpfs (~half of RAM). Jenkins requires >=1GiB free
+# temporary space, so put /tmp + java.io.tmpdir on an attached DO block volume.
+- name: Configure DigitalOcean volume for Jenkins temporary space
+  when:
+    - do_volume_device | default('') | length > 0
+    - do_volume_mount | default('') | length > 0
+  block:
+    - name: Ensure DO volume mount point exists
+      file:
+        path: "{{ do_volume_mount }}"
+        state: directory
+        mode: "0755"
+
+    - name: Mount DO volume
+      mount:
+        path: "{{ do_volume_mount }}"
+        src: "{{ do_volume_device }}"
+        fstype: ext4
+        opts: defaults,nofail,discard
+        state: mounted
+
+    - name: Create tmp directories on DO volume
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: "1777"
+      loop:
+        - "{{ do_volume_mount }}/tmp"
+        - "{{ jenkins_tmpdir }}"
+
+    - name: Mask systemd tmp.mount (avoid tmpfs /tmp)
+      systemd:
+        name: tmp.mount
+        masked: true
+        state: stopped
+      failed_when: false
+
+    - name: Bind-mount volume tmp over /tmp
+      mount:
+        path: /tmp
+        src: "{{ do_volume_mount }}/tmp"
+        fstype: none
+        opts: bind,nofail
+        state: mounted
+
 # Small droplets (512MB) need swap or Jenkins OOMs during first boot.
 - name: Ensure swapfile for Jenkins
   block:
@@ -126,6 +171,15 @@
     - "{{ whanos_root }}"
     - "{{ whanos_root }}/jenkins"
     - "{{ whanos_root }}/images"
+
+- name: Ensure jenkins owns Jenkins tmpdir on DO volume
+  when: jenkins_tmpdir | default('') | length > 0
+  file:
+    path: "{{ jenkins_tmpdir }}"
+    owner: jenkins
+    group: jenkins
+    mode: "1777"
+    state: directory
 
 - name: Ensure Jenkins home directory permissions
   file:

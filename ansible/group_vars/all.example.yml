@@ -15,6 +15,13 @@ jenkins_url: "http://{{ vps_ip }}"
 jenkins_home: "/var/lib/jenkins"
 whanos_root: "/opt/whanos"
 
+# DigitalOcean block volume (optional; leave empty to skip)
+# Small droplets use tmpfs /tmp (~half of RAM), which trips Jenkins' 1GiB free-space check.
+# Attach a DO volume, then set these so Ansible mounts it and points Jenkins tmp there.
+do_volume_device: "" # e.g. /dev/disk/by-id/scsi-0DO_Volume_volume-fra1-...
+do_volume_mount: "" # e.g. /mnt/volume_fra1_...
+jenkins_tmpdir: "{{ do_volume_mount }}/jenkins-tmp"
+
 # DigitalOcean Container Registry
 # Required for pushing images to DigitalOcean Container Registry
 registry_host: "registry.digitalocean.com"
