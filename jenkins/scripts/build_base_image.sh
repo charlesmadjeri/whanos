@@ -7,16 +7,30 @@ if [ -z "$LANGUAGE" ]; then
     exit 1
 fi
 
-echo "Logging into DigitalOcean registry..."
-echo "$REGISTRY_TOKEN" | docker login registry.digitalocean.com -u "$REGISTRY_USERNAME" --password-stdin
+REGISTRY_HOST="${REGISTRY_HOST:-registry.digitalocean.com}"
+
+if [ -z "$REGISTRY_NAME" ]; then
+    echo "Error: REGISTRY_NAME is required"
+    exit 1
+fi
+
+if [ -z "$REGISTRY_USERNAME" ] || [ -z "$REGISTRY_TOKEN" ]; then
+    echo "Error: REGISTRY_USERNAME and REGISTRY_TOKEN are required"
+    exit 1
+fi
+
+IMAGE_REF="${REGISTRY_HOST}/${REGISTRY_NAME}/whanos:whanos-${LANGUAGE}"
+
+echo "Logging into registry ${REGISTRY_HOST}..."
+echo "$REGISTRY_TOKEN" | docker login "${REGISTRY_HOST}" -u "$REGISTRY_USERNAME" --password-stdin
 
 cd /opt/whanos/images/${LANGUAGE}
 
 echo "Building base image..."
 docker build -t whanos-${LANGUAGE}:latest - < Dockerfile.base
 
-echo "Tagging base image..."
-docker tag whanos-${LANGUAGE}:latest registry.digitalocean.com/whanos-container-registry/whanos:whanos-${LANGUAGE}
+echo "Tagging base image as ${IMAGE_REF}..."
+docker tag whanos-${LANGUAGE}:latest "${IMAGE_REF}"
 
 echo "Pushing base image..."
-docker push registry.digitalocean.com/whanos-container-registry/whanos:whanos-${LANGUAGE}
+docker push "${IMAGE_REF}"

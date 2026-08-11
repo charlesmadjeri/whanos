@@ -12,6 +12,8 @@ whanos_root: "/opt/whanos"
 
 # DigitalOcean Container Registry
 # Required for pushing images to DigitalOcean Container Registry
+registry_host: "registry.digitalocean.com"
+registry_name: "whanos" # Your DOCR registry name
 registry_username: "" # Your DigitalOcean email
 registry_token: ""    # Your DigitalOcean API token
 
