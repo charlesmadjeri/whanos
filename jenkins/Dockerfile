@@ -1,9 +1,9 @@
-FROM jenkins/jenkins:2.479.2-jdk17
+FROM jenkins/jenkins:2.541.3-jdk17
 
 ARG JENKINS_ADMIN_PASSWORD
 ENV JENKINS_ADMIN_PASSWORD=${JENKINS_ADMIN_PASSWORD}
-ENV JAVA_OPTS -Djenkins.install.runSetupWizard=false
-ENV CASC_JENKINS_CONFIG /opt/whanos/jenkins/casc/jenkins-config.yml
+ENV JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+ENV CASC_JENKINS_CONFIG=/opt/whanos/jenkins/casc/jenkins-config.yml
 ENV JENKINS_URL=${JENKINS_URL}
 
 USER root
@@ -33,6 +33,10 @@ RUN wget https://github.com/mikefarah/yq/releases/download/v4.35.1/yq_linux_amd6
 USER jenkins
 
 COPY jenkins/plugins.txt /usr/share/jenkins/ref/plugins.txt
-RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt
+# Avoid flaky geo mirrors (e.g. halifax) that reset connections during plugin install.
+ENV JENKINS_UC_DOWNLOAD=https://ftp.belnet.be/mirror/jenkins
+RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt \
+    --jenkins-update-center https://updates.jenkins.io/update-center.json \
+    --jenkins-plugin-info https://updates.jenkins.io/plugin-versions.json
 
 COPY images /opt/whanos/images
