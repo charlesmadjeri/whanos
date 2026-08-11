@@ -17,11 +17,7 @@ for var in DOCKER_TAG FULL_TAG; do
     fi
 done
 
-TEMPLATE_PATH="/opt/whanos/jenkins/templates/k8s-manifest.yml.template"
-if [ ! -f "${TEMPLATE_PATH}" ]; then
-    echo "Template file not found at ${TEMPLATE_PATH}"
-    exit 1
-fi
+export DOCKER_TAG FULL_TAG
 
 echo "Using kubeconfig at: ${KUBECONFIG}"
 if [ ! -f "${KUBECONFIG}" ]; then
@@ -30,27 +26,45 @@ if [ ! -f "${KUBECONFIG}" ]; then
 fi
 
 REPLICAS=$(yq e '.deployment.replicas // 1' whanos.yml)
-# Keep single-port behavior for now; multi-port handled in a follow-up.
-PORT=$(yq e '.deployment.ports[0] // ""' whanos.yml)
-
-export DOCKER_TAG FULL_TAG REPLICAS PORT
+PORT_COUNT=$(yq e '.deployment.ports // [] | length' whanos.yml)
 
 echo "Creating Kubernetes manifest..."
-envsubst < "${TEMPLATE_PATH}" > k8s-manifest.yml
 
-# Apply Kubernetes resources as-is when present; omit when unset (subject default).
+# Deployment (always)
+yq -n "
+.apiVersion = \"apps/v1\" |
+.kind = \"Deployment\" |
+.metadata.name = strenv(DOCKER_TAG) |
+.metadata.labels.app = strenv(DOCKER_TAG) |
+.spec.replicas = ${REPLICAS} |
+.spec.selector.matchLabels.app = strenv(DOCKER_TAG) |
+.spec.template.metadata.labels.app = strenv(DOCKER_TAG) |
+.spec.template.spec.containers[0].name = strenv(DOCKER_TAG) |
+.spec.template.spec.containers[0].image = strenv(FULL_TAG)
+" > k8s-manifest.yml
+
 if [ "$(yq e '.deployment | has("resources")' whanos.yml)" = "true" ]; then
     yq e -i '.spec.template.spec.containers[0].resources = load("whanos.yml").deployment.resources' k8s-manifest.yml
-else
-    yq e -i 'del(.spec.template.spec.containers[0].resources)' k8s-manifest.yml
 fi
 
-# Drop empty container port when whanos.yml defines none.
-if [ -z "${PORT}" ] || [ "${PORT}" = "null" ]; then
-    yq e -i 'del(.spec.template.spec.containers[0].ports)' k8s-manifest.yml
-    yq e -i 'select(document_index == 0)' k8s-manifest.yml > k8s-manifest.tmp.yml
-    mv k8s-manifest.tmp.yml k8s-manifest.yml
+if [ "${PORT_COUNT}" -gt 0 ]; then
+    yq e -i '.spec.template.spec.containers[0].ports = (load("whanos.yml").deployment.ports | map({"containerPort": .}))' k8s-manifest.yml
+
+    {
+        echo "---"
+        yq -n "
+        .apiVersion = \"v1\" |
+        .kind = \"Service\" |
+        .metadata.name = strenv(DOCKER_TAG) |
+        .spec.type = \"LoadBalancer\" |
+        .spec.selector.app = strenv(DOCKER_TAG) |
+        .spec.ports = (load(\"whanos.yml\").deployment.ports | map({\"port\": ., \"targetPort\": ., \"protocol\": \"TCP\"}))
+        "
+    } >> k8s-manifest.yml
 fi
+
+echo "Generated manifest:"
+cat k8s-manifest.yml
 
 echo "Kubeconfig contents:"
 kubectl config view
@@ -61,15 +75,11 @@ if ! kubectl cluster-info; then
     echo "Failed to connect to cluster. Retrying with validation disabled..."
     if ! kubectl apply -f k8s-manifest.yml --validate=false; then
         echo "Failed to apply manifest"
-        echo "Manifest contents:"
-        cat k8s-manifest.yml
         exit 1
     fi
 else
     if ! kubectl apply -f k8s-manifest.yml; then
         echo "Failed to apply manifest"
-        echo "Manifest contents:"
-        cat k8s-manifest.yml
         exit 1
     fi
 fi
@@ -83,7 +93,7 @@ kubectl get nodes || true
 echo "Waiting for deployment to be ready..."
 kubectl rollout status deployment/${DOCKER_TAG} --timeout=120s
 
-if [ -n "${PORT}" ] && [ "${PORT}" != "null" ]; then
+if [ "${PORT_COUNT}" -gt 0 ]; then
     echo "Checking service status..."
     kubectl get services ${DOCKER_TAG}
 
@@ -91,7 +101,9 @@ if [ -n "${PORT}" ] && [ "${PORT}" != "null" ]; then
     for i in {1..30}; do
         EXTERNAL_IP=$(kubectl get service ${DOCKER_TAG} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
         if [ -n "$EXTERNAL_IP" ]; then
-            echo "Service available at: http://${EXTERNAL_IP}:${PORT}"
+            for port in $(yq e '.deployment.ports[]' whanos.yml); do
+                echo "Service available at: http://${EXTERNAL_IP}:${port}"
+            done
             break
         fi
         echo "Waiting for external IP... (attempt $i/30)"
