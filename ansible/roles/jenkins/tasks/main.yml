@@ -1,16 +1,4 @@
 ---
-- name: Remove existing files TO REMOVE
-  file:
-    path: "{{ whanos_root }}"
-    state: absent
-  notify: Restart Jenkins
-
-- name: Remove existing files TO REMOVE
-  file:
-    path: "{{ jenkins_home }}"
-    state: absent
-  notify: Restart Jenkins
-
 - name: Add Jenkins apt key
   apt_key:
     url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
