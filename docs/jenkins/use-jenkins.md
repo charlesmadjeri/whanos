@@ -22,7 +22,21 @@ Run **link-project**:
 
 Created job: polls every minute → `cd` to `PROJECT_ROOT` → build/push → deploy if `whanos.yml` has `deployment`.
 
-**Private Git:** add a credential in Jenkins, select it in `link-project`.
+**Private Git (HTTPS):**
+
+1. GitHub → Settings → Developer settings → Personal access tokens (classic or fine-grained with Contents: Read).
+2. Jenkins → Manage Jenkins → Credentials → (global) → Add:
+   - Kind: **Username with password**
+   - Username: your GitHub username (or `git` for fine-grained PATs)
+   - Password: the token
+   - ID: e.g. `github-private` (remember this)
+3. Re-run **link-project** for the app (or update the job’s Git credentials) with:
+   - `GIT_URL` = `https://github.com/<you>/whanos.git`
+   - `GIT_CREDENTIALS` = that credential ID
+
+**Private Git (SSH):** add an **SSH Username with private key** credential, use `GIT_URL` = `git@github.com:<you>/whanos.git`, select it as `GIT_SSH_KEY`. Jenkins must trust `github.com` host keys (first clone may need known_hosts).
+
+After the repo is private, a build without credentials must fail; with credentials it must clone and succeed.
 
 ### Test with example apps (this monorepo)
 
