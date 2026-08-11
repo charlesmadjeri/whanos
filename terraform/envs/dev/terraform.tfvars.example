@@ -4,9 +4,16 @@
 project_name         = "whanos-dev"
 region               = "fra1"
 registry_name        = "whanos"
-cluster_node_count   = 1
-cluster_node_size    = "s-2vcpu-2gb"
-jenkins_droplet_size = "s-2vcpu-2gb"
-ssh_public_key_path  = "../../../ansible/ssh/whanos_vps.pub"
-ssh_allow_cidrs      = ["0.0.0.0/0"]
-enable_https         = false
+
+# DOKS (lab can be 1 node; subject prefers ≥2 for defense)
+cluster_node_count = 1
+cluster_node_size  = "s-2vcpu-2gb"
+
+# Match current $4/mo Jenkins VM + 5 GiB tmp volume (~$0.50/mo)
+jenkins_droplet_size    = "s-1vcpu-512mb-10gb"
+jenkins_droplet_image   = "debian-13-x64"
+jenkins_volume_size_gb  = 5
+
+ssh_public_key_path = "../../../ansible/ssh/whanos_vps.pub"
+ssh_allow_cidrs     = ["0.0.0.0/0"]
+enable_https        = false

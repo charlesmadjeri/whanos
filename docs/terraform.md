@@ -13,9 +13,20 @@ terraform/
   modules/registry
   modules/cluster
   modules/jenkins-vps
-  envs/dev     # cheap lab defaults (1-node OK)
+  envs/dev     # cheap lab: $4 Jenkins droplet (512MB) + 5GiB volume; 1-node DOKS OK
   envs/prod    # ≥2 nodes, SSH allowlist, HTTPS firewall, larger droplet
 ```
+
+## Cost notes (dev / current lab shape)
+
+| Resource | Size | Approx |
+|---|---|---|
+| Jenkins VPS | `s-1vcpu-512mb-10gb`, Debian 13, fra1 | **$4/mo** |
+| Block volume | 5 GiB (Jenkins `/tmp`) | ~$0.50/mo |
+| DOKS | 1× `s-2vcpu-2gb` (lab) | much more than the VPS — destroy when idle |
+| DOCR | starter | often free tier / low |
+
+The 512MB droplet needs the volume (tmpfs `/tmp` is too small for Jenkins). Ansible vars `do_volume_*` are generated into `tf.generated.yml`.
 
 ## Prerequisites
 

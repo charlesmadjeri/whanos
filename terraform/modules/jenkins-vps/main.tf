@@ -23,13 +23,13 @@ variable "region" {
 
 variable "size" {
   type        = string
-  description = "Droplet size. Prod should be at least s-2vcpu-2gb (not 512MB)."
-  default     = "s-2vcpu-2gb"
+  description = "Droplet size. Cheap lab: s-1vcpu-512mb-10gb ($4/mo). Prod: prefer ≥ s-2vcpu-2gb."
+  default     = "s-1vcpu-512mb-10gb"
 }
 
 variable "image" {
   type    = string
-  default = "debian-12-x64"
+  default = "debian-13-x64"
 }
 
 variable "ssh_public_key_path" {
@@ -60,6 +60,18 @@ variable "ansible_inventory_path" {
   default     = ""
 }
 
+variable "volume_size_gb" {
+  type        = number
+  description = "Block volume size for Jenkins tmp on small droplets (0 = skip). Current lab uses 5 GiB."
+  default     = 5
+}
+
+variable "volume_name" {
+  type        = string
+  description = "DO volume name (becomes /dev/disk/by-id/scsi-0DO_Volume_<name>)."
+  default     = ""
+}
+
 resource "digitalocean_ssh_key" "this" {
   name       = "${var.name}-ansible"
   public_key = file(var.ssh_public_key_path)
@@ -73,6 +85,27 @@ resource "digitalocean_droplet" "this" {
   ssh_keys   = [digitalocean_ssh_key.this.id]
   tags       = var.tags
   monitoring = true
+}
+
+locals {
+  volume_name = var.volume_name != "" ? var.volume_name : "${var.name}-tmp"
+}
+
+resource "digitalocean_volume" "jenkins_tmp" {
+  count = var.volume_size_gb > 0 ? 1 : 0
+
+  region                  = var.region
+  name                    = local.volume_name
+  size                    = var.volume_size_gb
+  initial_filesystem_type = "ext4"
+  description             = "Jenkins temporary space for small droplets"
+}
+
+resource "digitalocean_volume_attachment" "jenkins_tmp" {
+  count = var.volume_size_gb > 0 ? 1 : 0
+
+  droplet_id = digitalocean_droplet.this.id
+  volume_id  = digitalocean_volume.jenkins_tmp[0].id
 }
 
 resource "digitalocean_firewall" "this" {
@@ -147,4 +180,17 @@ output "droplet_id" {
 
 output "ssh_key_fingerprint" {
   value = digitalocean_ssh_key.this.fingerprint
+}
+
+output "volume_name" {
+  value = var.volume_size_gb > 0 ? local.volume_name : ""
+}
+
+# Matches Ansible do_volume_* used on the current $4 droplet.
+output "do_volume_device" {
+  value = var.volume_size_gb > 0 ? "/dev/disk/by-id/scsi-0DO_Volume_${local.volume_name}" : ""
+}
+
+output "do_volume_mount" {
+  value = var.volume_size_gb > 0 ? "/mnt/${local.volume_name}" : ""
 }
