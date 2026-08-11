@@ -1,7 +1,16 @@
 # Documentation Hub
 
-- [Ansible](ansible/ansible-hub.md) — VPS playbook and roles  
-- [Jenkins](jenkins/jenkins-hub.md) — start, use, plugins  
-- [Terraform](terraform.md) — DOCR + DOKS + Jenkins VPS (optional IaC)
+| Guide | Purpose |
+|---|---|
+| [Terraform](terraform.md) | **Recommended** DO bootstrap: DOCR + DOKS + Jenkins VPS → Ansible |
+| [Ansible](ansible/ansible-hub.md) | Configure the VPS (UFW, Docker, Jenkins, Nginx) |
+| [Jenkins](jenkins/jenkins-hub.md) | Start/use Jenkins, plugins, link-project |
+
+Typical flow on DigitalOcean:
+
+1. [Terraform](terraform.md) — `make terraform-up ENV=dev`
+2. Merge `tf.generated.yml` into `all.yml` + secrets
+3. [Ansible](ansible/ansible-hub.md) — `make run-ansible`
+4. [Start Jenkins](jenkins/start-jenkins.md) / [Use Jenkins](jenkins/use-jenkins.md)
 
 [README](../README.md)

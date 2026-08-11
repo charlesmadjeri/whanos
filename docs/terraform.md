@@ -1,71 +1,111 @@
 # Terraform for Whanos
 
-Optional IaC path that replaces manual `doctl` bootstrap for:
+Preferred DigitalOcean bootstrap: provision **registry + DOKS + Jenkins VPS** with Terraform, then configure Jenkins with Ansible.
 
-1. **DigitalOcean Container Registry**
-2. **DOKS cluster** (write `kubeconfig.yaml`)
-3. **Jenkins VPS** (droplet + SSH key + cloud firewall) → hand off to Ansible
+Replaces manual `doctl registry/kubernetes/droplet` steps in the README.
 
-## Layout
+## What it creates
+
+| Module | Resources |
+|---|---|
+| `modules/registry` | DigitalOcean Container Registry (DOCR) |
+| `modules/cluster` | DOKS cluster + writes repo-root `kubeconfig.yaml` (mode `0600`) |
+| `modules/jenkins-vps` | Droplet, SSH key, cloud firewall, optional block volume, Ansible inventory snippet |
+
+| Env | Intent |
+|---|---|
+| `envs/dev` | Cheap lab: `$4/mo` Jenkins droplet + 5 GiB volume; 1-node DOKS OK |
+| `envs/prod` | ≥2 DOKS nodes, SSH allowlist, HTTPS firewall port, larger droplet |
 
 ```
 terraform/
-  modules/registry
-  modules/cluster
-  modules/jenkins-vps
-  envs/dev     # cheap lab: $4 Jenkins droplet (512MB) + 5GiB volume; 1-node DOKS OK
-  envs/prod    # ≥2 nodes, SSH allowlist, HTTPS firewall, larger droplet
+  modules/{registry,cluster,jenkins-vps}/
+  envs/{dev,prod}/
 ```
 
-## Cost notes (dev / current lab shape)
+## Cost notes (dev)
 
 | Resource | Size | Approx |
 |---|---|---|
-| Jenkins VPS | `s-1vcpu-512mb-10gb`, Debian 13, fra1 | **$4/mo** |
-| Block volume | 5 GiB (Jenkins `/tmp`) | ~$0.50/mo |
-| DOKS | 1× `s-2vcpu-2gb` (lab) | much more than the VPS — destroy when idle |
-| DOCR | starter | often free tier / low |
+| Jenkins VPS | `s-1vcpu-512mb-10gb`, Debian 13, `fra1` | **$4/mo** |
+| Block volume | 5 GiB (Jenkins `/tmp`) | ~$0.50/mo |
+| DOKS | 1× `s-2vcpu-2gb` (lab) | **dominates the bill** — destroy when idle |
+| DOCR | `starter` | low / free tier |
 
-The 512MB droplet needs the volume (tmpfs `/tmp` is too small for Jenkins). Ansible vars `do_volume_*` are generated into `tf.generated.yml`.
+The 512 MB droplet needs the volume (tmpfs `/tmp` is too small for Jenkins). Terraform writes `do_volume_*` into `ansible/group_vars/tf.generated.yml` for Ansible.
 
 ## Prerequisites
 
-- [Terraform](https://www.terraform.io/) ≥ 1.5 (`nix-shell` includes it)
-- `doctl` available
-- Project SSH key: `ansible/ssh/whanos_vps` (+ `.pub`) — see [ansible/ssh/README.md](../ansible/ssh/README.md)
-- **DigitalOcean token in repo-root `.env`** (gitignored):
+- Tools: `terraform` ≥ 1.5, `doctl`, `make` (`nix-shell` provides them)
+- Project SSH key (Terraform installs the **public** key on the droplet):
+
+```bash
+mkdir -p ansible/ssh
+ssh-keygen -t ed25519 -f ansible/ssh/whanos_vps -N "" -C "whanos-vps-ansible"
+# private key stays local (gitignored); public key is referenced by tfvars
+```
+
+- DigitalOcean API token in **repo-root** `.env` (gitignored; not `jenkins/.env`):
 
 ```bash
 cp .env.example .env
-# set DIGITALOCEAN_TOKEN=dop_v1_...
+# DIGITALOCEAN_TOKEN=dop_v1_...
 ```
 
-`make terraform-*` and `nix-shell` load `.env` automatically. (`jenkins/.env` stays separate for Compose.)
+`make terraform-*` and `nix-shell` load `.env` automatically (also sets `DIGITALOCEAN_ACCESS_TOKEN` for `doctl`).
 
 ## Quick start (dev)
 
 ```bash
-cp .env.example .env   # DIGITALOCEAN_TOKEN=...
+cd whanos
+nix-shell   # optional but recommended
+
+cp .env.example .env
+# edit .env → DIGITALOCEAN_TOKEN
+
 cp terraform/envs/dev/terraform.tfvars.example terraform/envs/dev/terraform.tfvars
-# edit tfvars if needed
+# defaults already match the $4 droplet + 5 GiB volume
 
-make terraform-plan ENV=dev
-make terraform-up ENV=dev
-# → kubeconfig.yaml, ansible/inventory.tf.yml, ansible/group_vars/tf.generated.yml
+make terraform-plan ENV=dev    # review
+make terraform-up ENV=dev      # apply + DOCR↔DOKS integration attempt
+```
 
-# Merge tf.generated.yml into all.yml (add jenkins_admin_password + registry_*)
+### Outputs / generated files (gitignored)
+
+| File | Purpose |
+|---|---|
+| `kubeconfig.yaml` | Cluster access for Jenkins / local `kubectl` |
+| `ansible/group_vars/tf.generated.yml` | `vps_ip`, `jenkins_url`, `registry_name`, `do_volume_*` |
+| `ansible/inventory.tf.yml` | Optional inventory snippet with the new droplet IP |
+
+## Ansible handoff
+
+1. Merge `ansible/group_vars/tf.generated.yml` into `ansible/group_vars/all.yml` (or copy values).
+2. Keep secrets that Terraform does **not** manage:
+   - `jenkins_admin_password`
+   - `registry_username` (DO account email)
+   - `registry_token` (same API token as `.env` is fine)
+3. Ensure `vps_ssh_private_key_file` points at `ansible/ssh/whanos_vps`.
+4. Configure the VPS:
+
+```bash
 make run-ansible
 ```
 
-## Production (safe defaults)
+5. Open `http://<jenkins_ipv4>/` (from `terraform output jenkins_ipv4` or `all.yml`).
+
+Full Jenkins steps: [Start Jenkins](jenkins/start-jenkins.md) → [Use Jenkins](jenkins/use-jenkins.md).
+
+## Production (`ENV=prod`)
 
 ```bash
 cp terraform/envs/prod/terraform.tfvars.example terraform/envs/prod/terraform.tfvars
-# MUST set ssh_allow_cidrs to your IP/32
+# MUST set ssh_allow_cidrs = ["YOUR.IP/32"]
+make terraform-plan ENV=prod
 make terraform-up ENV=prod
 ```
 
-Prod module enforces `cluster_node_count >= 2`, opens 443 when `enable_https = true`, and defaults to a larger Jenkins droplet. TLS certificates are still configured in Ansible/nginx (firewall only opens the port).
+Prod enforces `cluster_node_count >= 2`, defaults to a larger Jenkins size, and can open firewall **443** (`enable_https = true`). TLS certificates are still installed/configured in Ansible/nginx (`jenkins_tls_*` in `all.yml`).
 
 ## Make targets
 
@@ -73,21 +113,37 @@ Prod module enforces `cluster_node_count >= 2`, opens 443 when `enable_https = t
 |---|---|
 | `make terraform-init ENV=dev` | `terraform init` |
 | `make terraform-plan ENV=dev` | plan |
-| `make terraform-up ENV=dev` | apply + DOCR↔DOKS integration |
+| `make terraform-up ENV=dev` | apply + registry↔cluster integration |
 | `make terraform-down ENV=dev` | destroy |
-| `make infra ENV=dev` | terraform-up then remind Ansible handoff |
+| `make infra ENV=dev` | `terraform-up` then remind Ansible handoff |
 
-## Destroy / cost
+After the first `init`, commit the provider lockfile:
+
+```bash
+git add terraform/envs/dev/.terraform.lock.hcl   # and prod when used
+git commit -m "chore(terraform): add provider lockfile for dev env"
+```
+
+## Destroy / cleanup
 
 ```bash
 make terraform-down ENV=dev
-# Optional: python scripts/clean_docr.py   # wipe leftover registry images
+# Optional leftover images: python scripts/clean_docr.py
 ```
 
-Droplets, DOKS, and DOCR incur hourly cost — destroy lab stacks when idle.
+If you created resources **outside** Terraform earlier, tear them down with `doctl` (droplets, `kubernetes cluster delete --dangerous`, `registry delete`, volumes, LBs) before the next apply so names like `whanos` are free.
 
 ## Security notes
 
-- State files (`.tfstate`) can contain kubeconfig material — gitignored; prefer a remote backend with lock for teams.
-- Never commit `terraform.tfvars`, `kubeconfig.yaml`, or `tf.generated.yml`.
-- Do not publish Docker TCP 2375; Compose and Ansible paths were hardened separately.
+- Never commit `.env`, `terraform.tfvars`, `*.tfstate`, `kubeconfig.yaml`, or `tf.generated.yml`.
+- State can contain kubeconfig material — use a remote backend + lock for shared/prod use.
+- Dev firewall may allow SSH from `0.0.0.0/0`; prod should restrict `ssh_allow_cidrs`.
+
+## Related docs
+
+- [Documentation hub](documentation-hub.md)
+- [Ansible playbook](ansible/playbook.md) — configure the droplet after Terraform
+- [Ansible SSH key](../ansible/ssh/README.md)
+- [Start Jenkins](jenkins/start-jenkins.md)
+
+[README](../README.md)

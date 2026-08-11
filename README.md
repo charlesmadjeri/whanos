@@ -11,7 +11,7 @@ Whanos detects a supported app in a Git repo, builds a Docker image, pushes it t
 | **Internal platform / PaaS** | Teams push code + optional `whanos.yml`; platform owns Jenkins, registry, and cluster. |
 | **Polyglot estates** | Language auto-detection with shared base images; optional custom `Dockerfile`. |
 | **Repeatable releases** | Build once, push, deploy the same artifact. |
-| **Small ops footprint** | Ansible or Compose recreates the Jenkins control plane from this repo. |
+| **Small ops footprint** | Terraform provisions DO cloud; Ansible or Compose configures Jenkins. |
 
 Flow: push → Jenkins poll → build & push image → optional K8s deploy → LoadBalancer (or your ingress).
 
@@ -25,8 +25,8 @@ You always need: a **registry**, a **Kubernetes cluster** (≥ 2 nodes preferred
 
 ### Prerequisites
 
-- `kubectl`, Docker + Compose (local Jenkins), Ansible + Debian VPS (VPS path)
-- Provider CLI for the path you pick (`doctl`, …)
+- `kubectl`, Docker + Compose (local Jenkins), Ansible (VPS path), Terraform (DigitalOcean IaC path)
+- Provider CLI: `doctl` (DigitalOcean)
 
 <details>
 <summary><strong>NixOS</strong> — <code>shell.nix</code></summary>
@@ -36,7 +36,7 @@ cd whanos
 nix-shell
 ```
 
-Provides `make`, `kubectl`, `doctl`, `ansible`, `docker-compose`. Docker daemon must be enabled in system NixOS config (user in `docker` group). `KUBECONFIG` is set to `./kubeconfig.yaml`.
+Provides `make`, `kubectl`, `doctl`, `ansible`, `terraform`, `docker-compose`. Loads repo-root `.env` for `DIGITALOCEAN_TOKEN` when present. Docker daemon must be enabled in system NixOS config (user in `docker` group). `KUBECONFIG` is set to `./kubeconfig.yaml`.
 
 ```bash
 nix-shell --run 'doctl account get'   # one-shot
@@ -52,12 +52,23 @@ For zsh inside `nix-shell`, use [`any-nix-shell`](https://github.com/haslersn/an
 git clone git@github.com:charlesmadjeri/whanos.git whanos
 cd whanos
 
-cp jenkins/.env.example jenkins/.env
-cp .env.example .env                                 # DIGITALOCEAN_TOKEN for terraform/doctl
-cp ansible/group_vars/all.example.yml ansible/group_vars/all.yml   # VPS only
+cp jenkins/.env.example jenkins/.env                 # Compose Jenkins
+cp .env.example .env                                 # DIGITALOCEAN_TOKEN (terraform/doctl)
+cp ansible/group_vars/all.example.yml ansible/group_vars/all.yml   # VPS / Ansible
 ```
 
 ### Credentials
+
+<details>
+<summary><strong>Repo-root <code>.env</code></strong> — Terraform / doctl</summary>
+
+| Variable | Role |
+|---|---|
+| `DIGITALOCEAN_TOKEN` | DO API token (also used as `DIGITALOCEAN_ACCESS_TOKEN` for doctl) |
+
+`make terraform-*` and `nix-shell` load this file automatically. Do not put the token in `terraform.tfvars`.
+
+</details>
 
 <details>
 <summary><strong>Compose</strong> — <code>jenkins/.env</code></summary>
@@ -76,7 +87,11 @@ cp ansible/group_vars/all.example.yml ansible/group_vars/all.yml   # VPS only
 <details>
 <summary><strong>Ansible</strong> — <code>ansible/group_vars/all.yml</code></summary>
 
-Set `vps_ip`, `jenkins_admin_password`, `jenkins_url`, `registry_*`, and `vps_ssh_private_key_file` (default: project key under `ansible/ssh/`). Optional: `vps_root_password`. Keep `kubeconfig.yaml` at the repo root. See [Ansible playbook](docs/ansible/playbook.md) for generating the VPS key.
+Set `vps_ip`, `jenkins_admin_password`, `jenkins_url`, `registry_*`, and `vps_ssh_private_key_file` (default: project key under `ansible/ssh/`). Optional: `vps_root_password`, `do_volume_*`, `jenkins_tls_*`.
+
+After **Terraform**, merge `ansible/group_vars/tf.generated.yml` into `all.yml` (IP, registry name, volume paths), then add passwords/tokens. Keep `kubeconfig.yaml` at the repo root.
+
+See [Ansible playbook](docs/ansible/playbook.md) and [Terraform](docs/terraform.md).
 
 </details>
 
@@ -85,12 +100,36 @@ Set `vps_ip`, `jenkins_admin_password`, `jenkins_url`, `registry_*`, and `vps_ss
 ## 2. Provider path (pick one)
 
 <details>
-<summary><strong>DigitalOcean</strong> — supported path</summary>
+<summary><strong>DigitalOcean + Terraform</strong> — recommended</summary>
 
-**Tools:** [doctl](https://docs.digitalocean.com/reference/doctl/how-to/install/), `kubectl` (NixOS: project `nix-shell`).
+Provisions DOCR + DOKS + Jenkins droplet (cheap lab defaults: **$4/mo** VPS + 5 GiB volume), then Ansible configures Jenkins.
 
 ```bash
-doctl auth init
+cp .env.example .env   # DIGITALOCEAN_TOKEN=...
+mkdir -p ansible/ssh
+test -f ansible/ssh/whanos_vps || \
+  ssh-keygen -t ed25519 -f ansible/ssh/whanos_vps -N "" -C "whanos-vps-ansible"
+
+cp terraform/envs/dev/terraform.tfvars.example terraform/envs/dev/terraform.tfvars
+make terraform-plan ENV=dev
+make terraform-up ENV=dev
+
+# Merge ansible/group_vars/tf.generated.yml → all.yml (+ password, registry_username/token)
+make run-ansible
+```
+
+Full guide: **[Terraform](docs/terraform.md)** · then [Start Jenkins](docs/jenkins/start-jenkins.md) → [Use Jenkins](docs/jenkins/use-jenkins.md).
+
+Destroy when idle: `make terraform-down ENV=dev`.
+
+</details>
+
+<details>
+<summary><strong>DigitalOcean + doctl</strong> — manual bootstrap</summary>
+
+**Tools:** [doctl](https://docs.digitalocean.com/reference/doctl/how-to/install/), `kubectl` (NixOS: project `nix-shell`). Token may come from repo-root `.env` or `doctl auth init`.
+
+```bash
 doctl account get --format Email --no-header   # REGISTRY_USERNAME
 
 doctl registry create whanos --region fra1
@@ -105,6 +144,8 @@ doctl kubernetes cluster registry add whanos
 kubectl --kubeconfig=./kubeconfig.yaml apply -f kubernetes/rbac.yaml   # optional
 ```
 
+Create a Debian droplet yourself (lab: `s-1vcpu-512mb-10gb` + 5 GiB volume), install the Ansible SSH pubkey, set `vps_ip` in `all.yml`, then `make run-ansible`.
+
 ```env
 REGISTRY_HOST=registry.digitalocean.com
 REGISTRY_NAME=whanos
@@ -112,7 +153,7 @@ REGISTRY_USERNAME=your.email@example.com
 REGISTRY_TOKEN=<do_api_token>
 ```
 
-Next: [Start Jenkins](docs/jenkins/start-jenkins.md) → [Use Jenkins](docs/jenkins/use-jenkins.md).
+Next: [Start Jenkins](docs/jenkins/start-jenkins.md) → [Use Jenkins](docs/jenkins/use-jenkins.md). Prefer the [Terraform path](docs/terraform.md) when you want one-command cloud recreate.
 
 </details>
 
@@ -156,7 +197,7 @@ Next: [Start Jenkins](docs/jenkins/start-jenkins.md) → [Use Jenkins](docs/jenk
 
 After registry + cluster + credentials:
 
-1. **[Start Jenkins](docs/jenkins/start-jenkins.md)** — Compose (`make run-local`) or Ansible (`make run-ansible`)
+1. **[Start Jenkins](docs/jenkins/start-jenkins.md)** — Compose (`make run-local`), Ansible on an existing VPS (`make run-ansible`), or Terraform → Ansible
 2. **[Use Jenkins](docs/jenkins/use-jenkins.md)** — build base images → `link-project` → check deploy
 
 Login: `admin` / password from env. Docs hub: [Documentation](docs/documentation-hub.md).
@@ -167,11 +208,9 @@ Login: `admin` / password from env. Docs hub: [Documentation](docs/documentation
 make help
 make run-local / run-local-build / run-local-down / run-local-restart / run-local-reset
 make run-ansible / run-ansible-verbose / run-ansible-very-verbose
+make terraform-plan ENV=dev / terraform-up ENV=dev / terraform-down ENV=dev / infra ENV=dev
 make ci-detection / ci-k8s / ci-base-images
-make terraform-up ENV=dev / terraform-down ENV=dev / infra ENV=dev
 ```
-
-Optional cloud bootstrap with Terraform: [docs/terraform.md](docs/terraform.md).
 
 ## License
 
