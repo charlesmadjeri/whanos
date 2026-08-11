@@ -1,0 +1,174 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOCKER_BUILDKIT: "1"
+
+jobs:
+  lint:
+    name: Lint & syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ShellCheck scripts
+        uses: ludeeus/action-shellcheck@2.0.0
+        env:
+          SHELLCHECK_OPTS: -x -e SC2181
+        with:
+          scandir: jenkins/scripts
+          additional_files: scripts/ci/test-detection.sh scripts/ci/test-apply-k8s.sh
+          severity: warning
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible tooling
+        run: |
+          pip install --upgrade pip
+          pip install "ansible-core>=2.16,<2.18" ansible-lint yamllint
+          ansible-galaxy collection install -r ansible/collections/requirements.yml
+
+      - name: YAML lint (selected)
+        run: |
+          yamllint -d "{extends: relaxed, rules: {line-length: disable, truthy: disable}}" \
+            ansible docker-compose.yml jenkins/casc \
+            docs/example_apps/whanos_example_apps/ts-hello-world/whanos.yml
+
+      - name: Ansible syntax-check
+        run: |
+          cp ansible/group_vars/all.example.yml ansible/group_vars/all.yml
+          # Dummy values so inventory templates resolve
+          sed -i 's/^vps_ip:.*/vps_ip: "127.0.0.1"/' ansible/group_vars/all.yml
+          ANSIBLE_CONFIG=ansible/ansible.cfg \
+            ansible-playbook -i ansible/inventory.yml ansible/playbook.yml --syntax-check
+
+      - name: Ansible lint
+        run: |
+          ANSIBLE_CONFIG=ansible/ansible.cfg ansible-lint -p ansible/playbook.yml
+
+      - name: Docker Compose config
+        run: docker compose -f docker-compose.yml config >/dev/null
+
+      - name: Required layout present
+        run: |
+          set -e
+          for lang in c java javascript python befunge; do
+            test -f "images/${lang}/Dockerfile.base"
+            test -f "images/${lang}/Dockerfile.standalone"
+          done
+          test -f LICENSE
+          grep -q "GNU GENERAL PUBLIC LICENSE" LICENSE
+          test -f jenkins/scripts/build_project.sh
+          test -f jenkins/scripts/apply_k8s.sh
+
+  detection:
+    name: Language detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run detection tests
+        run: |
+          chmod +x scripts/ci/test-detection.sh jenkins/scripts/*.sh
+          ./scripts/ci/test-detection.sh
+
+  k8s-manifests:
+    name: K8s manifest generation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/download/v4.35.1/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - name: Run apply_k8s tests
+        run: |
+          chmod +x scripts/ci/test-apply-k8s.sh jenkins/scripts/apply_k8s.sh
+          ./scripts/ci/test-apply-k8s.sh
+
+  base-images:
+    name: Build base image (${{ matrix.lang }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        lang: [c, java, javascript, python, befunge]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build whanos-${{ matrix.lang }} base
+        run: |
+          docker build -t "whanos-${{ matrix.lang }}" \
+            - < "images/${{ matrix.lang }}/Dockerfile.base"
+
+  standalone-images:
+    name: Standalone example (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    needs: [base-images]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: c-hello-world
+            lang: c
+          - app: java-hello-world
+            lang: java
+          - app: js-hello-world
+            lang: javascript
+          - app: python-hello-world
+            lang: python
+          - app: befunge-hello-world
+            lang: befunge
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build base for ${{ matrix.lang }}
+        run: |
+          docker build -t "whanos-${{ matrix.lang }}" \
+            - < "images/${{ matrix.lang }}/Dockerfile.base"
+      - name: Build standalone app image
+        working-directory: docs/example_apps/whanos_example_apps/${{ matrix.app }}
+        run: |
+          docker build -t "whanos-ci-${{ matrix.app }}" \
+            -f "${{ github.workspace }}/images/${{ matrix.lang }}/Dockerfile.standalone" \
+            .
+
+  custom-dockerfile:
+    name: Custom Dockerfile (ts-hello-world)
+    runs-on: ubuntu-latest
+    needs: [base-images]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build javascript base
+        run: docker build -t whanos-javascript - < images/javascript/Dockerfile.base
+      - name: Build ts-hello-world with repo Dockerfile
+        working-directory: docs/example_apps/whanos_example_apps/ts-hello-world
+        run: |
+          # Example Dockerfile uses FROM whanos-javascript
+          docker build -t whanos-ci-ts-hello-world .
+
+  jenkins-image:
+    name: Build Jenkins image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Jenkins image
+        run: |
+          docker build \
+            -f jenkins/Dockerfile \
+            --build-arg JENKINS_ADMIN_PASSWORD=ci \
+            -t whanos-jenkins:ci \
+            .

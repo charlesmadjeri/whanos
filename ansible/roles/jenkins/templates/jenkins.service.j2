@@ -7,24 +7,16 @@ After=network.target
 Type=simple
 User=jenkins
 Group=jenkins
-Environment="JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64"
-Environment="JAVA_OPTS=-Djenkins.install.runSetupWizard=false"
-Environment="JENKINS_HOME={{ jenkins_home }}"
-Environment="JENKINS_PLUGIN_DIR={{ jenkins_home }}/plugins"
-Environment="JENKINS_ADMIN_PASSWORD={{ jenkins_admin_password }}"
-Environment="JENKINS_URL={{ jenkins_url }}"
-Environment="CASC_JENKINS_CONFIG={{ whanos_root }}/jenkins/casc/jenkins-config.yml"
-Environment="REGISTRY_HOST={{ registry_host }}"
-Environment="REGISTRY_NAME={{ registry_name }}"
-Environment="REGISTRY_USERNAME={{ registry_username }}"
-Environment="REGISTRY_TOKEN={{ registry_token }}"
-Environment="KUBECONFIG_PATH={{ kubeconfig_path }}"
+# Secrets live in EnvironmentFile so passwords with %/#/& are not parsed as
+# systemd specifiers (Environment= would drop JENKINS_ADMIN_PASSWORD).
+EnvironmentFile=-/etc/jenkins/whanos.env
+Environment="JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64"
 
-ExecStart=/usr/bin/java ${JAVA_OPTS} -jar /usr/share/java/jenkins.war
+ExecStart=/usr/bin/java -Djenkins.install.runSetupWizard=false -Xmx256m -jar /usr/share/java/jenkins.war
 Restart=on-failure
 RestartSec=10
 LimitNOFILE=65536
-TimeoutStartSec=180
+TimeoutStartSec=300
 
 [Install]
-WantedBy=multi-user.target 
+WantedBy=multi-user.target

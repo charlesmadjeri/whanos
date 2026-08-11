@@ -103,15 +103,15 @@ echo "Available nodes:"
 kubectl get nodes || true
 
 echo "Waiting for deployment to be ready..."
-kubectl rollout status deployment/${DOCKER_TAG} --timeout=120s
+kubectl rollout status deployment/"${DOCKER_TAG}" --timeout=120s
 
 if [ "${PORT_COUNT}" -gt 0 ]; then
     echo "Checking service status..."
-    kubectl get services ${DOCKER_TAG}
+    kubectl get services "${DOCKER_TAG}"
 
     echo "Waiting for external IP..."
     for i in {1..30}; do
-        EXTERNAL_IP=$(kubectl get service ${DOCKER_TAG} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        EXTERNAL_IP=$(kubectl get service "${DOCKER_TAG}" -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
         if [ -n "$EXTERNAL_IP" ]; then
             for port in $(yq e '.deployment.ports[]' whanos.yml); do
                 echo "Service available at: http://${EXTERNAL_IP}:${port}"

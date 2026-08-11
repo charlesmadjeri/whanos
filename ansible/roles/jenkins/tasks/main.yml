@@ -1,13 +1,34 @@
 ---
-- name: Add Jenkins apt key
-  apt_key:
-    url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+- name: Install apt helpers for Jenkins repo
+  apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
     state: present
+    update_cache: yes
 
-- name: Add Jenkins repository
-  apt_repository:
-    repo: "deb https://pkg.jenkins.io/debian-stable binary/"
-    state: present
+- name: Ensure apt keyrings directory
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+# Jenkins uses a non-standard suite path (binary/); write the signed-by list
+# explicitly instead of apt_key/apt_repository (removed/deprecated on new Debian).
+- name: Install Jenkins repository signing key
+  get_url:
+    url: https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+    dest: /etc/apt/keyrings/jenkins-keyring.asc
+    mode: "0644"
+    force: true
+
+- name: Add Jenkins apt repository
+  copy:
+    dest: /etc/apt/sources.list.d/jenkins.list
+    mode: "0644"
+    content: |
+      deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/
 
 - name: Install yq
   get_url:
@@ -35,14 +56,61 @@
     dest: /usr/local/bin/jenkins-plugin-manager.jar
     mode: '0755'
 
+# Small droplets (512MB) need swap or Jenkins OOMs during first boot.
+- name: Ensure swapfile for Jenkins
+  block:
+    - name: Create swapfile
+      command: fallocate -l 1G /swapfile
+      args:
+        creates: /swapfile
+    - name: Set swapfile permissions
+      file:
+        path: /swapfile
+        owner: root
+        group: root
+        mode: "0600"
+    - name: Format swapfile
+      command: mkswap /swapfile
+      when: ansible_swaptotal_mb | int < 1
+    - name: Enable swapfile
+      command: swapon /swapfile
+      when: ansible_swaptotal_mb | int < 1
+    - name: Persist swapfile in fstab
+      mount:
+        path: none
+        src: /swapfile
+        fstype: swap
+        opts: sw
+        state: present
+
+- name: Prevent Jenkins package from auto-starting
+  copy:
+    dest: /usr/sbin/policy-rc.d
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      exit 101
+
 - name: Install required packages
   apt:
     name:
+      - fontconfig
+      - openjdk-21-jre
       - jenkins
-      - openjdk-17-jdk
       - gettext-base  # for envsubst
     state: present
     update_cache: yes
+
+- name: Allow services to start again
+  file:
+    path: /usr/sbin/policy-rc.d
+    state: absent
+
+- name: Stop stock Jenkins if it was started
+  systemd:
+    name: jenkins
+    state: stopped
+  failed_when: false
 
 - name: Create Jenkins directories
   file:
@@ -58,12 +126,6 @@
     - "{{ whanos_root }}"
     - "{{ whanos_root }}/jenkins"
     - "{{ whanos_root }}/images"
-
-- name: Start and enable Jenkins service
-  service:
-    name: jenkins
-    state: started
-    enabled: yes
 
 - name: Ensure Jenkins home directory permissions
   file:
@@ -117,19 +179,41 @@
     src: jenkins.service.j2
     dest: /lib/systemd/system/jenkins.service
     mode: '0644'
-  notify: Restart Jenkins
+
+- name: Ensure /etc/jenkins exists
+  file:
+    path: /etc/jenkins
+    state: directory
+    owner: root
+    group: jenkins
+    mode: '0750'
+
+- name: Install Whanos Jenkins environment file
+  template:
+    src: whanos.env.j2
+    dest: /etc/jenkins/whanos.env
+    owner: root
+    group: jenkins
+    mode: '0640'
 
 - name: Reload systemd daemon
   systemd:
     daemon_reload: yes
-  notify: Restart Jenkins
 
 - name: Add jenkins user to docker group
   user:
     name: jenkins
     groups: docker
     append: yes
-  notify: Restart Jenkins
+
+- name: Flush handlers before first start (plugins)
+  meta: flush_handlers
+
+- name: Start and enable Jenkins service
+  systemd:
+    name: jenkins
+    state: started
+    enabled: yes
 
 - name: Create handlers directory
   file:

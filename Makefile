@@ -52,12 +52,29 @@ run-local-clean:
 
 ## Run the playbook to setup the server
 run-ansible:
-	ansible-playbook -i ansible/inventory.yml ansible/playbook.yml
+	ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook -i ansible/inventory.yml ansible/playbook.yml
 
 ## Run the playbook to setup the server in verbose mode
 run-ansible-verbose:
-	ansible-playbook -i ansible/inventory.yml ansible/playbook.yml -vvv
+	ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook -i ansible/inventory.yml ansible/playbook.yml -vvv
 
 ## Run the playbook to setup the server in very verbose mode
 run-ansible-very-verbose:
-	ansible-playbook -i ansible/inventory.yml ansible/playbook.yml -vvvvv
+	ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook -i ansible/inventory.yml ansible/playbook.yml -vvvvv
+
+## CI checks that do not need cloud credentials
+ci-detection:
+	chmod +x scripts/ci/test-detection.sh jenkins/scripts/*.sh
+	./scripts/ci/test-detection.sh
+
+## CI: apply_k8s manifest generation with mocked kubectl
+ci-k8s:
+	chmod +x scripts/ci/test-apply-k8s.sh jenkins/scripts/apply_k8s.sh
+	./scripts/ci/test-apply-k8s.sh
+
+## CI: build all language base images locally
+ci-base-images:
+	@for lang in c java javascript python befunge; do \
+		echo "==> building whanos-$$lang"; \
+		docker build -t "whanos-$$lang" - < "images/$$lang/Dockerfile.base"; \
+	done

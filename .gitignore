@@ -137,4 +137,7 @@ coverage.xml
 # Environment files
 .env
 ansible/group_vars/all.yml
+ansible/ssh/*
+!ansible/ssh/.gitkeep
+!ansible/ssh/README.md
 kubeconfig.yaml

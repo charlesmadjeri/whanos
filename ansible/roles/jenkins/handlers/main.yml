@@ -6,10 +6,14 @@
 
 - name: Install Jenkins plugins
   command: >
-    java -jar /usr/local/bin/jenkins-plugin-manager.jar 
-    --war /usr/share/java/jenkins.war 
-    --plugin-file {{ whanos_root }}/jenkins/plugins.txt 
+    java -Xmx512m -jar /usr/local/bin/jenkins-plugin-manager.jar
+    --war /usr/share/java/jenkins.war
+    --plugin-file {{ whanos_root }}/jenkins/plugins.txt
     --plugin-download-directory {{ jenkins_home }}/plugins
+    --jenkins-update-center https://updates.jenkins.io/update-center.json
+    --jenkins-plugin-info https://updates.jenkins.io/plugin-versions.json
+  environment:
+    JENKINS_UC_DOWNLOAD: https://ftp.belnet.be/mirror/jenkins
   become: yes
   become_user: jenkins
-  notify: Restart Jenkins 
+  notify: Restart Jenkins

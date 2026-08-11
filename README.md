@@ -75,7 +75,7 @@ cp ansible/group_vars/all.example.yml ansible/group_vars/all.yml   # VPS only
 <details>
 <summary><strong>Ansible</strong> — <code>ansible/group_vars/all.yml</code></summary>
 
-Set `vps_ip`, `vps_root_password`, `jenkins_admin_password`, `jenkins_url`, and `registry_*`. Keep `kubeconfig.yaml` at the repo root.
+Set `vps_ip`, `jenkins_admin_password`, `jenkins_url`, `registry_*`, and `vps_ssh_private_key_file` (default: project key under `ansible/ssh/`). Optional: `vps_root_password`. Keep `kubeconfig.yaml` at the repo root. See [Ansible playbook](docs/ansible/playbook.md) for generating the VPS key.
 
 </details>
 
@@ -166,4 +166,9 @@ Login: `admin` / password from env. Docs hub: [Documentation](docs/documentation
 make help
 make run-local / run-local-build / run-local-down / run-local-restart / run-local-reset
 make run-ansible / run-ansible-verbose / run-ansible-very-verbose
+make ci-detection / ci-k8s / ci-base-images
 ```
+
+## License
+
+[GNU General Public License v3.0](LICENSE) (GPL-3.0).
