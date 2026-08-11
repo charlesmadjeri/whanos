@@ -82,20 +82,10 @@ fi
 
 # Export variables for other scripts
 echo "DOCKER_TAG=${DOCKER_TAG}" > build.env
-echo "FULL_TAG=${FULL_TAG}" >> build.env 
+echo "FULL_TAG=${FULL_TAG}" >> build.env
 
 if [ -f whanos.yml ]; then
-    # Export variables for Jenkins to use
-    REPLICAS=$(yq e '.deployment.replicas // 1' whanos.yml)
-    MEMORY_LIMITS=$(yq e '.deployment.resources.limits.memory // "128M"' whanos.yml)
-    MEMORY_REQUESTS=$(yq e '.deployment.resources.requests.memory // "64M"' whanos.yml)
-    PORT=$(yq e '.deployment.ports[0] // ""' whanos.yml)
-
-    # Export for Jenkins environment
-    echo "REPLICAS=${REPLICAS}" > whanos.env
-    echo "MEMORY_LIMITS=${MEMORY_LIMITS}" >> whanos.env
-    echo "MEMORY_REQUESTS=${MEMORY_REQUESTS}" >> whanos.env
-    echo "PORT=${PORT}" >> whanos.env
-    echo "DOCKER_TAG=${DOCKER_TAG}" >> whanos.env
+    # Image identifiers for apply_k8s.sh; deployment fields are read from whanos.yml
+    echo "DOCKER_TAG=${DOCKER_TAG}" > whanos.env
     echo "FULL_TAG=${FULL_TAG}" >> whanos.env
 fi

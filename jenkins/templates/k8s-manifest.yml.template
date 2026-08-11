@@ -17,11 +17,6 @@ spec:
       containers:
       - name: ${DOCKER_TAG}
         image: ${FULL_TAG}
-        resources:
-          limits:
-            memory: "${MEMORY_LIMITS}"
-          requests:
-            memory: "${MEMORY_REQUESTS}"
         ports:
         - containerPort: ${PORT}
 ---
@@ -36,4 +31,4 @@ spec:
   ports:
   - port: ${PORT}
     targetPort: ${PORT}
-    protocol: TCP 
+    protocol: TCP
