@@ -1,14 +1,13 @@
 services:
   docker-dind:
-    image: docker:dind
+    image: docker:27-dind
     restart: unless-stopped
     privileged: true
     environment:
+      # TLS off for the *internal* compose network only — do not publish 2375.
       - DOCKER_TLS_CERTDIR=""
-    ports:
-      - 4284:4284
-      - 2375:2375
-    command: 
+    # No host ports: DinD is reachable only as docker-dind:2375 on whanos-network.
+    command:
       - dockerd
       - --host=tcp://0.0.0.0:2375
       - --host=unix:///var/run/docker.sock
@@ -22,8 +21,6 @@ services:
     build:
       context: .
       dockerfile: ./jenkins/Dockerfile
-      args:
-        - JENKINS_ADMIN_PASSWORD
     env_file:
       - ./jenkins/.env
     restart: unless-stopped
@@ -36,8 +33,8 @@ services:
       - docker-dind
     volumes:
       - jenkins-data:/var/lib/jenkins
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./kubeconfig.yaml:/var/lib/jenkins/kube/config
+      # Do not mount the host docker.sock — Jenkins must use DinD only.
+      - ./kubeconfig.yaml:/var/lib/jenkins/kube/config:ro
     dns:
       - 8.8.8.8
       - 8.8.4.4

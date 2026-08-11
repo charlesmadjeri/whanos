@@ -4,6 +4,7 @@
 
 set -euo pipefail
 
+WORKSPACE_DIR="$(pwd -P)"
 ROOT="${PROJECT_ROOT:-}"
 if [ -z "${ROOT}" ]; then
     ROOT="."
@@ -21,7 +22,15 @@ case "${ROOT}" in
 esac
 
 cd "${ROOT}"
-echo "Working directory: $(pwd)"
+APP_DIR="$(pwd -P)"
+case "${APP_DIR}" in
+    "${WORKSPACE_DIR}"|"${WORKSPACE_DIR}"/*) ;;
+    *)
+        echo "PROJECT_ROOT resolves outside the workspace (${APP_DIR})"
+        exit 1
+        ;;
+esac
+echo "Working directory: ${APP_DIR}"
 
 echo "Step 1: Building and pushing Docker image..."
 /opt/whanos/jenkins/scripts/build_project.sh

@@ -1,0 +1,13 @@
+# Copy to terraform.tfvars (gitignored). Never commit real IPs/tokens.
+# export DIGITALOCEAN_TOKEN=...
+
+project_name         = "whanos-prod"
+region               = "fra1"
+registry_name        = "whanos"
+cluster_node_count   = 2
+cluster_node_size    = "s-2vcpu-4gb"
+jenkins_droplet_size = "s-2vcpu-4gb"
+ssh_public_key_path  = "../../../ansible/ssh/whanos_vps.pub"
+# REQUIRED: lock SSH to your admin IP(s)
+ssh_allow_cidrs      = ["YOUR.PUBLIC.IP.HERE/32"]
+enable_https         = true

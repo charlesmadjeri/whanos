@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 if [ ! -f whanos.yml ]; then
     echo "No whanos.yml found, skipping Kubernetes deployment"
@@ -32,6 +33,12 @@ if [ -z "${DIGITALOCEAN_ACCESS_TOKEN:-}" ] && [ -n "${REGISTRY_TOKEN:-}" ]; then
 fi
 
 REPLICAS=$(yq e '.deployment.replicas // 1' whanos.yml)
+if ! [[ "${REPLICAS}" =~ ^[0-9]+$ ]]; then
+    echo "Invalid deployment.replicas in whanos.yml (must be a non-negative integer): ${REPLICAS}"
+    exit 1
+fi
+export REPLICAS
+
 PORT_COUNT=$(yq e '.deployment.ports // [] | length' whanos.yml)
 
 echo "Creating Kubernetes manifest..."
@@ -40,20 +47,20 @@ echo "Creating Kubernetes manifest..."
 # otherwise apply is a no-op and nodes keep a cached digest (IfNotPresent).
 export WHANOS_BUILD_ID="${BUILD_NUMBER:-${BUILD_ID:-$(date +%s)}}"
 
-# Deployment (always)
-yq -n "
-.apiVersion = \"apps/v1\" |
-.kind = \"Deployment\" |
+# Deployment (always) — pass replicas via env to avoid yq expression injection.
+yq -n '
+.apiVersion = "apps/v1" |
+.kind = "Deployment" |
 .metadata.name = strenv(DOCKER_TAG) |
 .metadata.labels.app = strenv(DOCKER_TAG) |
-.spec.replicas = ${REPLICAS} |
+.spec.replicas = (env(REPLICAS) | tonumber) |
 .spec.selector.matchLabels.app = strenv(DOCKER_TAG) |
 .spec.template.metadata.labels.app = strenv(DOCKER_TAG) |
-.spec.template.metadata.annotations.\"whanos/build\" = strenv(WHANOS_BUILD_ID) |
+.spec.template.metadata.annotations."whanos/build" = strenv(WHANOS_BUILD_ID) |
 .spec.template.spec.containers[0].name = strenv(DOCKER_TAG) |
 .spec.template.spec.containers[0].image = strenv(FULL_TAG) |
-.spec.template.spec.containers[0].imagePullPolicy = \"Always\"
-" > k8s-manifest.yml
+.spec.template.spec.containers[0].imagePullPolicy = "Always"
+' > k8s-manifest.yml
 
 if [ "$(yq e '.deployment | has("resources")' whanos.yml)" = "true" ]; then
     yq e -i '.spec.template.spec.containers[0].resources = load("whanos.yml").deployment.resources' k8s-manifest.yml
@@ -64,41 +71,33 @@ if [ "${PORT_COUNT}" -gt 0 ]; then
 
     {
         echo "---"
-        yq -n "
-        .apiVersion = \"v1\" |
-        .kind = \"Service\" |
+        yq -n '
+        .apiVersion = "v1" |
+        .kind = "Service" |
         .metadata.name = strenv(DOCKER_TAG) |
-        .spec.type = \"LoadBalancer\" |
+        .spec.type = "LoadBalancer" |
         .spec.selector.app = strenv(DOCKER_TAG) |
-        .spec.ports = (load(\"whanos.yml\").deployment.ports | map({\"port\": ., \"targetPort\": ., \"protocol\": \"TCP\"}))
-        "
+        .spec.ports = (load("whanos.yml").deployment.ports | map({"port": ., "targetPort": ., "protocol": "TCP"}))
+        '
     } >> k8s-manifest.yml
 fi
 
 echo "Generated manifest:"
 cat k8s-manifest.yml
 
-echo "Kubeconfig contents:"
-kubectl config view
-
-sleep 2
+echo "kubectl context: $(kubectl config current-context 2>/dev/null || echo unknown)"
 
 if ! kubectl cluster-info; then
-    echo "Failed to connect to cluster. Retrying with validation disabled..."
-    if ! kubectl apply -f k8s-manifest.yml --validate=false; then
-        echo "Failed to apply manifest"
-        exit 1
-    fi
-else
-    if ! kubectl apply -f k8s-manifest.yml; then
-        echo "Failed to apply manifest"
-        exit 1
-    fi
+    echo "Failed to connect to cluster"
+    exit 1
+fi
+
+if ! kubectl apply -f k8s-manifest.yml; then
+    echo "Failed to apply manifest"
+    exit 1
 fi
 
 echo "Manifest applied successfully"
-echo "Current kubectl context:"
-kubectl config current-context || true
 echo "Available nodes:"
 kubectl get nodes || true
 

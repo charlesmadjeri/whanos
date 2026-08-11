@@ -9,7 +9,7 @@ User=jenkins
 Group=jenkins
 # Secrets live in EnvironmentFile so passwords with %/#/& are not parsed as
 # systemd specifiers (Environment= would drop JENKINS_ADMIN_PASSWORD).
-EnvironmentFile=-/etc/jenkins/whanos.env
+EnvironmentFile=/etc/jenkins/whanos.env
 Environment="JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64"
 
 ExecStart=/usr/bin/java -Djenkins.install.runSetupWizard=false{% if jenkins_tmpdir | default('') %} -Djava.io.tmpdir={{ jenkins_tmpdir }}{% endif %} -Xmx256m -jar /usr/share/java/jenkins.war

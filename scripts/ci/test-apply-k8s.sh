@@ -100,4 +100,20 @@ yq e 'select(.kind == "Service") | .spec.ports | length' k8s-manifest.yml | grep
 grep -q 'kubectl apply' "${MOCK_LOG}"
 
 echo "OK  manifest generation + mocked apply"
+
+# 4) reject non-integer replicas (yq injection guard)
+cat > whanos.yml <<'EOF'
+deployment:
+  replicas: '1; .evil = true'
+  ports:
+    - 3000
+EOF
+if bash "${ROOT}/jenkins/scripts/apply_k8s.sh" >"${TMP}/out4" 2>&1; then
+  echo "FAIL: expected non-integer replicas to fail"
+  cat "${TMP}/out4"
+  exit 1
+fi
+grep -qi 'Invalid deployment.replicas' "${TMP}/out4"
+echo "OK  reject bad replicas"
+
 echo "All apply_k8s tests passed"

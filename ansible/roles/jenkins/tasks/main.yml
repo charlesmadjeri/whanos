@@ -163,7 +163,7 @@
     state: directory
     owner: jenkins
     group: jenkins
-    mode: '0755'
+    mode: "0750"
   with_items:
     - "{{ jenkins_home }}"
     - "{{ jenkins_home }}/kube"
@@ -181,13 +181,18 @@
     mode: "1777"
     state: directory
 
-- name: Ensure Jenkins home directory permissions
+- name: Ensure Jenkins home ownership (do not chmod secrets world-readable)
   file:
     path: "{{ jenkins_home }}"
     owner: jenkins
     group: jenkins
     recurse: yes
-    mode: '0755'
+    state: directory
+
+- name: Restrict Jenkins home directory mode
+  file:
+    path: "{{ jenkins_home }}"
+    mode: "0750"
     state: directory
 
 - name: Copy Jenkins files
@@ -196,7 +201,13 @@
     dest: "{{ whanos_root }}/jenkins/"
     owner: jenkins
     group: jenkins
-    mode: '0755'
+    directory_mode: "0750"
+
+- name: Ensure Jenkins scripts are executable
+  file:
+    path: "{{ whanos_root }}/jenkins/scripts"
+    mode: "0750"
+    recurse: yes
 
 - name: Copy images
   copy:
@@ -204,7 +215,7 @@
     dest: "{{ whanos_root }}/images/"
     owner: jenkins
     group: jenkins
-    mode: '0755'
+    directory_mode: "0750"
 
 - name: Copy kubeconfig file
   copy:
@@ -212,7 +223,7 @@
     dest: "{{ kubeconfig_path }}"
     owner: jenkins
     group: jenkins
-    mode: '0755'
+    mode: "0600"
 
 - name: Read plugins list
   slurp:
@@ -231,8 +242,11 @@
 - name: Configure Jenkins service
   template:
     src: jenkins.service.j2
-    dest: /lib/systemd/system/jenkins.service
-    mode: '0644'
+    dest: /etc/systemd/system/jenkins.service
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart Jenkins
 
 - name: Ensure /etc/jenkins exists
   file:
@@ -240,7 +254,7 @@
     state: directory
     owner: root
     group: jenkins
-    mode: '0750'
+    mode: "0750"
 
 - name: Install Whanos Jenkins environment file
   template:
@@ -248,19 +262,17 @@
     dest: /etc/jenkins/whanos.env
     owner: root
     group: jenkins
-    mode: '0640'
-
-- name: Reload systemd daemon
-  systemd:
-    daemon_reload: yes
+    mode: "0640"
+  notify: Restart Jenkins
 
 - name: Add jenkins user to docker group
   user:
     name: jenkins
     groups: docker
     append: yes
+  notify: Restart Jenkins
 
-- name: Flush handlers before first start (plugins)
+- name: Flush handlers before first start (plugins / unit)
   meta: flush_handlers
 
 - name: Start and enable Jenkins service
@@ -268,9 +280,4 @@
     name: jenkins
     state: started
     enabled: yes
-
-- name: Create handlers directory
-  file:
-    path: "{{ role_path }}/handlers"
-    state: directory
-    mode: '0755'
+    daemon_reload: yes

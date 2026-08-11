@@ -54,9 +54,3 @@ credentials:
           secret: "${REGISTRY_USERNAME}"
           description: "DigitalOcean Registry Username"
           scope: GLOBAL
-      - file:
-          id: "kubernetes-config"
-          description: "Kubernetes config file"
-          fileName: "config"
-          secretBytes: "${KUBECONFIG_CONTENT}"
-          scope: GLOBAL

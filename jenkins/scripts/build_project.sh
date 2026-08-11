@@ -1,15 +1,16 @@
 #!/bin/bash
+set -euo pipefail
 
 DOCKER_TAG=$(echo "${JOB_NAME}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]//g')
 
 REGISTRY_HOST="${REGISTRY_HOST:-registry.digitalocean.com}"
 
-if [ -z "$REGISTRY_NAME" ]; then
+if [ -z "${REGISTRY_NAME:-}" ]; then
     echo "Error: REGISTRY_NAME is required"
     exit 1
 fi
 
-if [ -z "$REGISTRY_USERNAME" ] || [ -z "$REGISTRY_TOKEN" ]; then
+if [ -z "${REGISTRY_USERNAME:-}" ] || [ -z "${REGISTRY_TOKEN:-}" ]; then
     echo "Error: REGISTRY_USERNAME and REGISTRY_TOKEN are required"
     exit 1
 fi
@@ -29,8 +30,8 @@ elif [ -f app/main.bf ]; then
     LANGUAGE="befunge"
 else
     echo "No valid Whanos project structure detected"
-    echo 'Files found: '
-    tree
+    echo "Detection markers (Makefile, app/pom.xml, package.json, requirements.txt, app/main.bf) missing."
+    ls -la
     exit 1
 fi
 
@@ -43,7 +44,7 @@ COUNT=0
 [ -f requirements.txt ] && COUNT=$((COUNT+1))
 [ -f app/main.bf ] && COUNT=$((COUNT+1))
 
-if [ ${COUNT} -gt 1 ]; then
+if [ "${COUNT}" -gt 1 ]; then
     echo "Multiple language detection criteria found"
     exit 1
 fi
@@ -65,27 +66,14 @@ else
         .
 fi
 
-# Check if build was successful
-if [ $? -ne 0 ]; then
-    echo "Docker build failed"
-    exit 1
-fi
-
 echo "Tagging and pushing to registry as ${FULL_TAG}..."
 docker tag "${DOCKER_TAG}:latest" "${FULL_TAG}"
 docker push "${FULL_TAG}"
 
-if [ $? -ne 0 ]; then
-    echo "Failed to push image to registry"
-    exit 1
-fi
-
-# Export variables for other scripts
 echo "DOCKER_TAG=${DOCKER_TAG}" > build.env
 echo "FULL_TAG=${FULL_TAG}" >> build.env
 
 if [ -f whanos.yml ]; then
-    # Image identifiers for apply_k8s.sh; deployment fields are read from whanos.yml
     echo "DOCKER_TAG=${DOCKER_TAG}" > whanos.env
     echo "FULL_TAG=${FULL_TAG}" >> whanos.env
 fi

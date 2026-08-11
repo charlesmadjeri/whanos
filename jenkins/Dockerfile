@@ -1,10 +1,9 @@
 FROM jenkins/jenkins:2.541.3-jdk17
 
-ARG JENKINS_ADMIN_PASSWORD
-ENV JENKINS_ADMIN_PASSWORD=${JENKINS_ADMIN_PASSWORD}
+# Admin password and registry secrets come from runtime env_file / EnvironmentFile
+# only — never bake them into image layers via ARG/ENV.
 ENV JAVA_OPTS=-Djenkins.install.runSetupWizard=false
 ENV CASC_JENKINS_CONFIG=/opt/whanos/jenkins/casc/jenkins-config.yml
-ENV JENKINS_URL=${JENKINS_URL}
 
 USER root
 

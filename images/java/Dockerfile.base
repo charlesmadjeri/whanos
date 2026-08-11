@@ -6,9 +6,11 @@ ONBUILD COPY . /app
 
 ONBUILD WORKDIR /app
 
+# Build the jar, then leave only what runtime needs (subject: slim image).
 ONBUILD RUN mvn dependency:resolve -f app/pom.xml \
             && mvn package -f app/pom.xml \
-            && cp app/target/app.jar . \
-            && rm -rf app/
+            && cp app/target/app.jar /tmp/app.jar \
+            && find /app -mindepth 1 -delete \
+            && mv /tmp/app.jar /app/app.jar
 
 ONBUILD CMD ["java", "-jar", "app.jar"]

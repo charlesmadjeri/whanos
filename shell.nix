@@ -9,11 +9,12 @@ pkgs.mkShell {
     ansible
     ansible-lint   # optional
     yq-go          # optional local checks; Jenkins image has its own yq
+    terraform
     git
   ];
 
   shellHook = ''
-    echo "Whanos env ready: kubectl, doctl, ansible, make"
+    echo "Whanos env ready: kubectl, doctl, ansible, terraform, make"
     export KUBECONFIG="$PWD/kubeconfig.yaml"
   '';
 }

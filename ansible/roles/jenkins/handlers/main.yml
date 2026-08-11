@@ -1,8 +1,13 @@
 ---
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes
+
 - name: Restart Jenkins
   systemd:
     name: jenkins
     state: restarted
+    daemon_reload: yes
 
 - name: Install Jenkins plugins
   command: >

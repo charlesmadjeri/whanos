@@ -26,7 +26,7 @@ jobs:
       - name: ShellCheck scripts
         uses: ludeeus/action-shellcheck@2.0.0
         env:
-          SHELLCHECK_OPTS: -x -e SC2181
+          SHELLCHECK_OPTS: -x
         with:
           scandir: jenkins/scripts
           additional_files: scripts/ci/test-detection.sh scripts/ci/test-apply-k8s.sh
@@ -64,6 +64,20 @@ jobs:
       - name: Docker Compose config
         run: docker compose -f docker-compose.yml config >/dev/null
 
+      - name: Guard against publishing unauthenticated Docker API
+        run: |
+          set -euo pipefail
+          # DinD may listen on 2375 inside the compose network, but must not map to the host.
+          if docker compose -f docker-compose.yml config | grep -E 'published:[[:space:]]*"?2375"?'; then
+            echo "FAIL: docker-compose must not publish host port 2375"
+            exit 1
+          fi
+          if grep -E '^\s*-\s*["'\'']?2375:2375' docker-compose.yml; then
+            echo "FAIL: remove 2375:2375 host publish from docker-compose.yml"
+            exit 1
+          fi
+          echo "OK  no host-published Docker TCP 2375"
+
       - name: Required layout present
         run: |
           set -e
@@ -75,6 +89,8 @@ jobs:
           grep -q "GNU GENERAL PUBLIC LICENSE" LICENSE
           test -f jenkins/scripts/build_project.sh
           test -f jenkins/scripts/apply_k8s.sh
+          test -f terraform/envs/dev/main.tf
+          test -f terraform/envs/prod/main.tf
 
   detection:
     name: Language detection
@@ -145,6 +161,12 @@ jobs:
           docker build -t "whanos-ci-${{ matrix.app }}" \
             -f "${{ github.workspace }}/images/${{ matrix.lang }}/Dockerfile.standalone" \
             .
+      - name: Smoke-run befunge hello-world
+        if: matrix.app == 'befunge-hello-world'
+        run: |
+          out="$(docker run --rm "whanos-ci-befunge-hello-world")"
+          echo "$out"
+          echo "$out" | grep -q 'Hello'
 
   custom-dockerfile:
     name: Custom Dockerfile (ts-hello-world)
@@ -169,6 +191,12 @@ jobs:
         run: |
           docker build \
             -f jenkins/Dockerfile \
-            --build-arg JENKINS_ADMIN_PASSWORD=ci \
             -t whanos-jenkins:ci \
             .
+      - name: Ensure password is not baked as build-arg/ENV default
+        run: |
+          if docker history --no-trunc whanos-jenkins:ci | grep -i 'JENKINS_ADMIN_PASSWORD='; then
+            echo "FAIL: admin password appears in image history"
+            exit 1
+          fi
+          echo "OK  no admin password in image history"

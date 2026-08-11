@@ -167,7 +167,10 @@ make help
 make run-local / run-local-build / run-local-down / run-local-restart / run-local-reset
 make run-ansible / run-ansible-verbose / run-ansible-very-verbose
 make ci-detection / ci-k8s / ci-base-images
+make terraform-up ENV=dev / terraform-down ENV=dev / infra ENV=dev
 ```
+
+Optional cloud bootstrap with Terraform: [docs/terraform.md](docs/terraform.md).
 
 ## License
 

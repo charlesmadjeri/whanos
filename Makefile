@@ -7,7 +7,13 @@ RESET  := \033[0m
 # Target help text
 TARGET_MAX_CHAR_NUM=20
 
-.PHONY: help run run-verbose run-very-verbose
+.PHONY: help run-local run-local-build run-local-down run-local-restart run-local-reset run-local-clean \
+	run-ansible run-ansible-verbose run-ansible-very-verbose \
+	ci-detection ci-k8s ci-base-images \
+	terraform-init terraform-plan terraform-up terraform-down infra
+
+ENV ?= dev
+TF_DIR := terraform/envs/$(ENV)
 
 ## Show help
 help:
@@ -78,3 +84,30 @@ ci-base-images:
 		echo "==> building whanos-$$lang"; \
 		docker build -t "whanos-$$lang" - < "images/$$lang/Dockerfile.base"; \
 	done
+
+## Terraform init for ENV=dev|prod
+terraform-init:
+	cd $(TF_DIR) && terraform init
+
+## Terraform plan for ENV=dev|prod
+terraform-plan: terraform-init
+	cd $(TF_DIR) && terraform plan
+
+## Provision registry + DOKS + Jenkins VPS (ENV=dev|prod)
+terraform-up: terraform-init
+	cd $(TF_DIR) && terraform apply -auto-approve
+	@CLUSTER_ID=$$(cd $(TF_DIR) && terraform output -raw cluster_id); \
+	  echo "Integrating DOCR with DOKS $$CLUSTER_ID..."; \
+	  doctl registry kubernetes-integration create --cluster-uuid "$$CLUSTER_ID" || \
+	  doctl registry kubernetes-integration create "$$CLUSTER_ID" || \
+	  echo "WARN: run DOCR↔DOKS integration manually if the command failed"
+	@echo "Next: merge ansible/group_vars/tf.generated.yml into all.yml, then make run-ansible"
+	@cd $(TF_DIR) && terraform output next_steps
+
+## Destroy Terraform stack for ENV=dev|prod
+terraform-down:
+	cd $(TF_DIR) && terraform destroy -auto-approve
+
+## Provision cloud infra then remind Ansible handoff
+infra: terraform-up
+	@echo "Infra up. Fill secrets in ansible/group_vars/all.yml and run: make run-ansible"
