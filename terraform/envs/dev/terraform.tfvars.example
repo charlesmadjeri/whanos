@@ -1,5 +1,5 @@
 # Copy to terraform.tfvars (gitignored) and fill in.
-# export DIGITALOCEAN_TOKEN=...
+# Token: put DIGITALOCEAN_TOKEN in repo-root .env (see .env.example), not here.
 
 project_name         = "whanos-dev"
 region               = "fra1"

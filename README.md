@@ -53,6 +53,7 @@ git clone git@github.com:charlesmadjeri/whanos.git whanos
 cd whanos
 
 cp jenkins/.env.example jenkins/.env
+cp .env.example .env                                 # DIGITALOCEAN_TOKEN for terraform/doctl
 cp ansible/group_vars/all.example.yml ansible/group_vars/all.yml   # VPS only
 ```
 

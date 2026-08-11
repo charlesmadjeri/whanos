@@ -15,6 +15,21 @@ TARGET_MAX_CHAR_NUM=20
 ENV ?= dev
 TF_DIR := terraform/envs/$(ENV)
 
+# Load DIGITALOCEAN_TOKEN (and friends) from repo-root .env when present.
+# Jenkins Compose keeps using jenkins/.env.
+ifneq (,$(wildcard .env))
+include .env
+export
+endif
+
+# Prefer DIGITALOCEAN_TOKEN; mirror to ACCESS_TOKEN for doctl if unset.
+ifneq ($(strip $(DIGITALOCEAN_TOKEN)),)
+export DIGITALOCEAN_ACCESS_TOKEN ?= $(DIGITALOCEAN_TOKEN)
+endif
+ifneq ($(strip $(DIGITALOCEAN_ACCESS_TOKEN)),)
+export DIGITALOCEAN_TOKEN ?= $(DIGITALOCEAN_ACCESS_TOKEN)
+endif
+
 ## Show help
 help:
 	@printf '\n'
@@ -87,6 +102,8 @@ ci-base-images:
 
 ## Terraform init for ENV=dev|prod
 terraform-init:
+	@test -n "$$DIGITALOCEAN_TOKEN" -o -n "$$DIGITALOCEAN_ACCESS_TOKEN" || \
+	  (echo "Missing DIGITALOCEAN_TOKEN. Copy .env.example → .env and set the token."; exit 1)
 	cd $(TF_DIR) && terraform init
 
 ## Terraform plan for ENV=dev|prod
@@ -106,6 +123,8 @@ terraform-up: terraform-init
 
 ## Destroy Terraform stack for ENV=dev|prod
 terraform-down:
+	@test -n "$$DIGITALOCEAN_TOKEN" -o -n "$$DIGITALOCEAN_ACCESS_TOKEN" || \
+	  (echo "Missing DIGITALOCEAN_TOKEN. Copy .env.example → .env and set the token."; exit 1)
 	cd $(TF_DIR) && terraform destroy -auto-approve
 
 ## Provision cloud infra then remind Ansible handoff

@@ -30,21 +30,30 @@ The 512MB droplet needs the volume (tmpfs `/tmp` is too small for Jenkins). Ansi
 
 ## Prerequisites
 
-- [Terraform](https://www.terraform.io/) ≥ 1.5 (`nix-shell` includes it after `shell.nix` update)
-- `doctl` authenticated (`DIGITALOCEAN_TOKEN` / `doctl auth init`)
+- [Terraform](https://www.terraform.io/) ≥ 1.5 (`nix-shell` includes it)
+- `doctl` available
 - Project SSH key: `ansible/ssh/whanos_vps` (+ `.pub`) — see [ansible/ssh/README.md](../ansible/ssh/README.md)
+- **DigitalOcean token in repo-root `.env`** (gitignored):
+
+```bash
+cp .env.example .env
+# set DIGITALOCEAN_TOKEN=dop_v1_...
+```
+
+`make terraform-*` and `nix-shell` load `.env` automatically. (`jenkins/.env` stays separate for Compose.)
 
 ## Quick start (dev)
 
 ```bash
-export DIGITALOCEAN_TOKEN=...   # or DIGITALOCEAN_ACCESS_TOKEN
+cp .env.example .env   # DIGITALOCEAN_TOKEN=...
 cp terraform/envs/dev/terraform.tfvars.example terraform/envs/dev/terraform.tfvars
 # edit tfvars if needed
 
+make terraform-plan ENV=dev
 make terraform-up ENV=dev
 # → kubeconfig.yaml, ansible/inventory.tf.yml, ansible/group_vars/tf.generated.yml
 
-# Merge tf.generated.yml into ansible/group_vars/all.yml (add jenkins_admin_password + registry_*)
+# Merge tf.generated.yml into all.yml (add jenkins_admin_password + registry_*)
 make run-ansible
 ```
 
