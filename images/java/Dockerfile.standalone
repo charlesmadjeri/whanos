@@ -6,14 +6,14 @@ WORKDIR /app
 
 COPY . .
 
-RUN if [ -f "pom.xml" ]; then \
-        mvn dependency:resolve && \
-        mvn package && \
-        mv target/app.jar /app.jar && \
+RUN if [ -f "app/pom.xml" ]; then \
+        mvn dependency:resolve -f app/pom.xml && \
+        mvn package -f app/pom.xml && \
+        cp app/target/app.jar /app.jar && \
         rm -rf * && \
         mv /app.jar .; \
     fi
 
 RUN rm -rf Dockerfile* .git*
 
-CMD ["java", "-jar", "app.jar"] 
+CMD ["java", "-jar", "app.jar"]

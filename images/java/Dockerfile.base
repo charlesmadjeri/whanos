@@ -11,4 +11,4 @@ ONBUILD RUN mvn dependency:resolve -f app/pom.xml \
             && cp app/target/app.jar . \
             && rm -rf app/
 
-ONBUILD CMD ["java", "-jar", app.jar]
+ONBUILD CMD ["java", "-jar", "app.jar"]
