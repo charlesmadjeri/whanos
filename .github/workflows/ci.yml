@@ -45,7 +45,7 @@ jobs:
 
       - name: YAML lint (selected)
         run: |
-          yamllint -d "{extends: relaxed, rules: {line-length: disable, truthy: disable}}" \
+          yamllint -d "{extends: relaxed, rules: {line-length: disable, truthy: disable, indentation: {indent-sequences: consistent}}}" \
             ansible docker-compose.yml jenkins/casc \
             docs/example_apps/whanos_example_apps/ts-hello-world/whanos.yml
 

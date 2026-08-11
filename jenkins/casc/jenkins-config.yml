@@ -36,9 +36,9 @@ unclassified:
     url: "${JENKINS_URL:-http://localhost:8080}"
 
 jobs:
-  - file: /opt/whanos/jenkins/jobs/folders.groovy
-  - file: /opt/whanos/jenkins/jobs/base_images_jobs.groovy
-  - file: /opt/whanos/jenkins/jobs/link_project.groovy
+- file: /opt/whanos/jenkins/jobs/folders.groovy
+- file: /opt/whanos/jenkins/jobs/base_images_jobs.groovy
+- file: /opt/whanos/jenkins/jobs/link_project.groovy
 
 credentials:
   system:
