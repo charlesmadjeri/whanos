@@ -23,16 +23,33 @@ RUN chmod +x /opt/whanos/jenkins/scripts/*.sh
 RUN mkdir -p /var/lib/jenkins/kube && \
     chown -R jenkins:jenkins /var/lib/jenkins/kube && \
     chmod 700 /var/lib/jenkins/kube
-RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
-    chmod +x kubectl && \
-    mv kubectl /usr/local/bin/
-# DOKS kubeconfigs use exec auth via doctl; Jenkins needs it on PATH.
-RUN DOCTL_VERSION=1.120.0 && \
-    curl -sL "https://github.com/digitalocean/doctl/releases/download/v${DOCTL_VERSION}/doctl-${DOCTL_VERSION}-linux-amd64.tar.gz" \
-      | tar -xz -C /usr/local/bin doctl && \
-    chmod +x /usr/local/bin/doctl
-RUN wget https://github.com/mikefarah/yq/releases/download/v4.35.1/yq_linux_amd64 -O /usr/bin/yq && \
-    chmod +x /usr/bin/yq
+
+# Pinned tool versions + SHA256 (linux/amd64)
+ARG KUBECTL_VERSION=v1.31.0
+ARG KUBECTL_SHA256=7c27adc64a84d1c0cc3dcf7bf4b6e916cc00f3f576a2dbac51b318d926032437
+ARG DOCTL_VERSION=1.120.0
+ARG DOCTL_SHA256=4d6bddfa2480ff10a7704a26eddf5a9d1c568653fc50cc2eb033522486b9c7cd
+ARG YQ_VERSION=v4.35.1
+ARG YQ_SHA256=bd695a6513f1196aeda17b174a15e9c351843fb1cef5f9be0af170f2dd744f08
+
+RUN curl -fsSLo /tmp/kubectl \
+      "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" \
+    && echo "${KUBECTL_SHA256}  /tmp/kubectl" | sha256sum -c - \
+    && install -m 0755 /tmp/kubectl /usr/local/bin/kubectl \
+    && rm -f /tmp/kubectl
+
+RUN curl -fsSLo /tmp/doctl.tgz \
+      "https://github.com/digitalocean/doctl/releases/download/v${DOCTL_VERSION}/doctl-${DOCTL_VERSION}-linux-amd64.tar.gz" \
+    && echo "${DOCTL_SHA256}  /tmp/doctl.tgz" | sha256sum -c - \
+    && tar -xzf /tmp/doctl.tgz -C /usr/local/bin doctl \
+    && chmod +x /usr/local/bin/doctl \
+    && rm -f /tmp/doctl.tgz
+
+RUN curl -fsSLo /tmp/yq \
+      "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
+    && echo "${YQ_SHA256}  /tmp/yq" | sha256sum -c - \
+    && install -m 0755 /tmp/yq /usr/bin/yq \
+    && rm -f /tmp/yq
 
 USER jenkins
 

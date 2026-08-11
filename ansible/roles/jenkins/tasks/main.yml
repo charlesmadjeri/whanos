@@ -34,21 +34,30 @@
   get_url:
     url: https://github.com/mikefarah/yq/releases/download/v4.35.1/yq_linux_amd64
     dest: /usr/local/bin/yq
-    mode: '0755'
+    mode: "0755"
+    checksum: sha256:bd695a6513f1196aeda17b174a15e9c351843fb1cef5f9be0af170f2dd744f08
 
-- name: Install doctl (DOKS kubeconfig exec auth)
+- name: Download doctl tarball
+  get_url:
+    url: https://github.com/digitalocean/doctl/releases/download/v1.120.0/doctl-1.120.0-linux-amd64.tar.gz
+    dest: /tmp/doctl-1.120.0-linux-amd64.tar.gz
+    mode: "0644"
+    checksum: sha256:4d6bddfa2480ff10a7704a26eddf5a9d1c568653fc50cc2eb033522486b9c7cd
+
+- name: Install doctl binary
   unarchive:
-    src: "https://github.com/digitalocean/doctl/releases/download/v1.120.0/doctl-1.120.0-linux-amd64.tar.gz"
+    src: /tmp/doctl-1.120.0-linux-amd64.tar.gz
     dest: /usr/local/bin
     remote_src: yes
-    mode: '0755'
+    mode: "0755"
     creates: /usr/local/bin/doctl
 
 - name: Install kubectl
   get_url:
     url: https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl
     dest: /usr/local/bin/kubectl
-    mode: '0755'
+    mode: "0755"
+    checksum: sha256:7c27adc64a84d1c0cc3dcf7bf4b6e916cc00f3f576a2dbac51b318d926032437
 
 - name: Download Jenkins plugin manager
   get_url:

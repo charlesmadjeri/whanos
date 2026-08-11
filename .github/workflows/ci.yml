@@ -164,12 +164,51 @@ jobs:
           docker build -t "whanos-ci-${{ matrix.app }}" \
             -f "${{ github.workspace }}/images/${{ matrix.lang }}/Dockerfile.standalone" \
             .
-      - name: Smoke-run befunge hello-world
-        if: matrix.app == 'befunge-hello-world'
+      - name: Smoke-run standalone image
         run: |
-          out="$(docker run --rm "whanos-ci-befunge-hello-world")"
-          echo "$out"
-          echo "$out" | grep -q 'Hello'
+          set -euo pipefail
+          case "${{ matrix.app }}" in
+            c-hello-world|java-hello-world)
+              out="$(docker run --rm "whanos-ci-${{ matrix.app }}")"
+              echo "$out"
+              echo "$out" | grep -qi 'Hello'
+              ;;
+            befunge-hello-world)
+              out="$(docker run --rm "whanos-ci-${{ matrix.app }}")"
+              echo "$out"
+              echo "$out" | grep -q 'Hello'
+              ;;
+            js-hello-world)
+              docker run -d --name smoke-js -p 3000:3000 "whanos-ci-${{ matrix.app }}"
+              for i in $(seq 1 30); do
+                if curl -fsS http://127.0.0.1:3000/ | grep -q 'Hello'; then
+                  docker rm -f smoke-js
+                  exit 0
+                fi
+                sleep 1
+              done
+              docker logs smoke-js || true
+              docker rm -f smoke-js
+              exit 1
+              ;;
+            python-hello-world)
+              docker run -d --name smoke-py -p 8080:8080 "whanos-ci-${{ matrix.app }}"
+              for i in $(seq 1 30); do
+                if curl -fsS http://127.0.0.1:8080/ | grep -qi 'Hello'; then
+                  docker rm -f smoke-py
+                  exit 0
+                fi
+                sleep 1
+              done
+              docker logs smoke-py || true
+              docker rm -f smoke-py
+              exit 1
+              ;;
+            *)
+              echo "No smoke defined for ${{ matrix.app }}"
+              exit 1
+              ;;
+          esac
 
   custom-dockerfile:
     name: Custom Dockerfile (ts-hello-world)

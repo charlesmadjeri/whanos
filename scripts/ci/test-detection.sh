@@ -1,34 +1,26 @@
 #!/usr/bin/env bash
-# Offline detection checks mirroring jenkins/scripts/build_project.sh
+# Detection checks via the real jenkins/scripts/detect_language.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+DETECT="${ROOT}/jenkins/scripts/detect_language.sh"
+chmod +x "${DETECT}"
 FAIL=0
 
-detect() {
+run_detect() {
   local dir="$1"
   (
     cd "$dir"
-    if [ -f Makefile ]; then LANGUAGE=c
-    elif [ -f app/pom.xml ]; then LANGUAGE=java
-    elif [ -f package.json ]; then LANGUAGE=javascript
-    elif [ -f requirements.txt ]; then LANGUAGE=python
-    elif [ -f app/main.bf ]; then LANGUAGE=befunge
-    else
-      echo "NONE"
-      return 3
-    fi
-    COUNT=0
-    [ -f Makefile ] && COUNT=$((COUNT + 1))
-    [ -f app/pom.xml ] && COUNT=$((COUNT + 1))
-    [ -f package.json ] && COUNT=$((COUNT + 1))
-    [ -f requirements.txt ] && COUNT=$((COUNT + 1))
-    [ -f app/main.bf ] && COUNT=$((COUNT + 1))
-    if [ "${COUNT}" -gt 1 ]; then
-      echo "MULTI"
-      return 2
-    fi
-    echo "${LANGUAGE}"
+    set +e
+    out="$("${DETECT}" 2>/dev/null)"
+    rc=$?
+    set -e
+    case "${rc}" in
+      0) echo "${out}" ;;
+      2) echo "MULTI" ;;
+      3) echo "NONE" ;;
+      *) echo "ERR${rc}" ;;
+    esac
   )
 }
 
@@ -45,21 +37,19 @@ assert_eq() {
 TMP="$(mktemp -d)"
 trap 'rm -rf "${TMP}"' EXIT
 
-# Example apps
 EX="${ROOT}/docs/example_apps/whanos_example_apps"
-assert_eq "c-hello-world" "$(detect "${EX}/c-hello-world")" "c"
-assert_eq "java-hello-world" "$(detect "${EX}/java-hello-world")" "java"
-assert_eq "js-hello-world" "$(detect "${EX}/js-hello-world")" "javascript"
-assert_eq "python-hello-world" "$(detect "${EX}/python-hello-world")" "python"
-assert_eq "befunge-hello-world" "$(detect "${EX}/befunge-hello-world")" "befunge"
-assert_eq "ts-hello-world" "$(detect "${EX}/ts-hello-world")" "javascript"
+assert_eq "c-hello-world" "$(run_detect "${EX}/c-hello-world")" "c"
+assert_eq "java-hello-world" "$(run_detect "${EX}/java-hello-world")" "java"
+assert_eq "js-hello-world" "$(run_detect "${EX}/js-hello-world")" "javascript"
+assert_eq "python-hello-world" "$(run_detect "${EX}/python-hello-world")" "python"
+assert_eq "befunge-hello-world" "$(run_detect "${EX}/befunge-hello-world")" "befunge"
+assert_eq "ts-hello-world" "$(run_detect "${EX}/ts-hello-world")" "javascript"
 
-# Edge cases
-mkdir -p "${TMP}/multi" "${TMP}/none" "${TMP}/none/app"
+mkdir -p "${TMP}/multi" "${TMP}/none"
 touch "${TMP}/multi/Makefile" "${TMP}/multi/package.json"
 touch "${TMP}/none/README"
-assert_eq "multi-criteria" "$(detect "${TMP}/multi" || true)" "MULTI"
-assert_eq "no-criteria" "$(detect "${TMP}/none" || true)" "NONE"
+assert_eq "multi-criteria" "$(run_detect "${TMP}/multi")" "MULTI"
+assert_eq "no-criteria" "$(run_detect "${TMP}/none")" "NONE"
 
 if [ "${FAIL}" -ne 0 ]; then
   echo "detection tests failed"

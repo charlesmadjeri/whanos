@@ -5,11 +5,40 @@
     state: present
     update_cache: yes
 
+- name: Ensure TLS certificate paths exist when TLS is enabled
+  when: jenkins_tls_enabled | default(false) | bool
+  block:
+    - name: Require certificate paths
+      assert:
+        that:
+          - jenkins_tls_cert_path | default('') | length > 0
+          - jenkins_tls_key_path | default('') | length > 0
+        fail_msg: "Set jenkins_tls_cert_path and jenkins_tls_key_path when jenkins_tls_enabled is true"
+
+    - name: Check TLS certificate file
+      stat:
+        path: "{{ jenkins_tls_cert_path }}"
+      register: tls_cert
+
+    - name: Check TLS key file
+      stat:
+        path: "{{ jenkins_tls_key_path }}"
+      register: tls_key
+
+    - name: Fail if TLS files are missing
+      assert:
+        that:
+          - tls_cert.stat.exists
+          - tls_key.stat.exists
+        fail_msg: >-
+          TLS enabled but certificate/key not found. Install certs (e.g. certbot) then re-run,
+          or set jenkins_tls_enabled: false for HTTP-only.
+
 - name: Configure Nginx for Jenkins
   template:
     src: jenkins.nginx.conf.j2
     dest: /etc/nginx/sites-available/jenkins
-    mode: '0644'
+    mode: "0644"
   notify: reload nginx
 
 - name: Enable Jenkins site

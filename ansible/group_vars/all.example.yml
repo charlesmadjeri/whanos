@@ -11,6 +11,12 @@ vps_ssh_private_key_file: "{{ inventory_dir }}/ssh/whanos_vps"
 jenkins_admin_password: "change_me"
 jenkins_url: "http://{{ vps_ip }}"
 
+# Optional TLS (prod). Place certs on the VPS first (certbot, etc.), then enable.
+jenkins_tls_enabled: false
+jenkins_tls_server_name: "{{ vps_ip }}"
+jenkins_tls_cert_path: "" # e.g. /etc/letsencrypt/live/jenkins.example.com/fullchain.pem
+jenkins_tls_key_path: ""  # e.g. /etc/letsencrypt/live/jenkins.example.com/privkey.pem
+
 # Paths
 jenkins_home: "/var/lib/jenkins"
 whanos_root: "/opt/whanos"

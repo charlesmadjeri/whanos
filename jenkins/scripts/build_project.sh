@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 DOCKER_TAG=$(echo "${JOB_NAME}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]//g')
 
 REGISTRY_HOST="${REGISTRY_HOST:-registry.digitalocean.com}"
@@ -18,36 +20,8 @@ fi
 echo "Logging into registry ${REGISTRY_HOST}..."
 echo "$REGISTRY_TOKEN" | docker login "${REGISTRY_HOST}" -u "$REGISTRY_USERNAME" --password-stdin
 
-if [ -f Makefile ]; then
-    LANGUAGE="c"
-elif [ -f app/pom.xml ]; then
-    LANGUAGE="java"
-elif [ -f package.json ]; then
-    LANGUAGE="javascript"
-elif [ -f requirements.txt ]; then
-    LANGUAGE="python"
-elif [ -f app/main.bf ]; then
-    LANGUAGE="befunge"
-else
-    echo "No valid Whanos project structure detected"
-    echo "Detection markers (Makefile, app/pom.xml, package.json, requirements.txt, app/main.bf) missing."
-    ls -la
-    exit 1
-fi
-
+LANGUAGE="$("${SCRIPT_DIR}/detect_language.sh")"
 echo "LANGUAGE DETECTED: ${LANGUAGE}"
-
-COUNT=0
-[ -f Makefile ] && COUNT=$((COUNT+1))
-[ -f app/pom.xml ] && COUNT=$((COUNT+1))
-[ -f package.json ] && COUNT=$((COUNT+1))
-[ -f requirements.txt ] && COUNT=$((COUNT+1))
-[ -f app/main.bf ] && COUNT=$((COUNT+1))
-
-if [ "${COUNT}" -gt 1 ]; then
-    echo "Multiple language detection criteria found"
-    exit 1
-fi
 
 BASE_IMAGE="${REGISTRY_HOST}/${REGISTRY_NAME}/whanos:whanos-${LANGUAGE}"
 FULL_TAG="${REGISTRY_HOST}/${REGISTRY_NAME}/whanos:${DOCKER_TAG}"
