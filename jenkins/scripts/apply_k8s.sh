@@ -47,20 +47,21 @@ echo "Creating Kubernetes manifest..."
 # otherwise apply is a no-op and nodes keep a cached digest (IfNotPresent).
 export WHANOS_BUILD_ID="${BUILD_NUMBER:-${BUILD_ID:-$(date +%s)}}"
 
-# Deployment (always) — pass replicas via env to avoid yq expression injection.
-yq -n '
-.apiVersion = "apps/v1" |
-.kind = "Deployment" |
+# Deployment (always). REPLICAS is validated as ^[0-9]+$ above, so embedding
+# the integer literal is safe and avoids yq env/tonumber quirks across versions.
+yq -n "
+.apiVersion = \"apps/v1\" |
+.kind = \"Deployment\" |
 .metadata.name = strenv(DOCKER_TAG) |
 .metadata.labels.app = strenv(DOCKER_TAG) |
-.spec.replicas = (env(REPLICAS) | tonumber) |
+.spec.replicas = ${REPLICAS} |
 .spec.selector.matchLabels.app = strenv(DOCKER_TAG) |
 .spec.template.metadata.labels.app = strenv(DOCKER_TAG) |
-.spec.template.metadata.annotations."whanos/build" = strenv(WHANOS_BUILD_ID) |
+.spec.template.metadata.annotations.\"whanos/build\" = strenv(WHANOS_BUILD_ID) |
 .spec.template.spec.containers[0].name = strenv(DOCKER_TAG) |
 .spec.template.spec.containers[0].image = strenv(FULL_TAG) |
-.spec.template.spec.containers[0].imagePullPolicy = "Always"
-' > k8s-manifest.yml
+.spec.template.spec.containers[0].imagePullPolicy = \"Always\"
+" > k8s-manifest.yml
 
 if [ "$(yq e '.deployment | has("resources")' whanos.yml)" = "true" ]; then
     yq e -i '.spec.template.spec.containers[0].resources = load("whanos.yml").deployment.resources' k8s-manifest.yml

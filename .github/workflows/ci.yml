@@ -62,11 +62,14 @@ jobs:
           ANSIBLE_CONFIG=ansible/ansible.cfg ansible-lint -p ansible/playbook.yml
 
       - name: Docker Compose config
-        run: docker compose -f docker-compose.yml config >/dev/null
+        run: |
+          cp jenkins/.env.example jenkins/.env
+          docker compose -f docker-compose.yml config >/dev/null
 
       - name: Guard against publishing unauthenticated Docker API
         run: |
           set -euo pipefail
+          test -f jenkins/.env || cp jenkins/.env.example jenkins/.env
           # DinD may listen on 2375 inside the compose network, but must not map to the host.
           if docker compose -f docker-compose.yml config | grep -E 'published:[[:space:]]*"?2375"?'; then
             echo "FAIL: docker-compose must not publish host port 2375"
