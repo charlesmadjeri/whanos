@@ -1,62 +1,7 @@
-# Jenkins Role
+# Jenkins
 
-## Overview
-Installs and configures Jenkins CI server with necessary plugins and configurations for the Whanos infrastructure.
+Installs Jenkins + JDK 17, copies `jenkins/` and `images/` to the VPS, installs plugins from `plugins.txt`, drops kubeconfig, configures systemd (Casc + registry env), adds `jenkins` to the `docker` group.
 
-## Features
-- Automated installation of Jenkins and Java
-- Plugin management using plugin manager
-- Docker integration
-- Configuration as Code support
-- Secure default configuration
+Paths: `jenkins_home` (default `/var/lib/jenkins`), `whanos_root` (default `/opt/whanos`).
 
-## Tasks Sequence
-
-### Pre-installation
-- Add Jenkins repository and GPG key
-- Install OpenJDK 17
-- Install Jenkins package
-
-### Directory Setup
-```yaml
-- "{{ jenkins_home }}"          # /var/lib/jenkins
-- "{{ whanos_root }}"           # /opt/whanos
-- "{{ whanos_root }}/jenkins"   # Configuration directory
-- "{{ whanos_root }}/images"    # Docker images directory
-```
-
-### Configuration
-- Copy Jenkins configuration files
-- Set up plugin management
-- Configure systemd service
-- Set proper permissions
-- Add Jenkins user to Docker group
-
-### Plugin Management
-- Downloads plugin manager
-- Installs plugins from plugins.txt
-- Uses handlers for idempotent installation
-
-## Environment Variables
-```yaml
-JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-JENKINS_HOME: {{ jenkins_home }}
-CASC_JENKINS_CONFIG: {{ whanos_root }}/jenkins/casc/jenkins-config.yml
-JENKINS_PLUGIN_DIR: {{ jenkins_home }}/plugins
-JENKINS_ADMIN_PASSWORD: {{ jenkins_admin_password }}
-JENKINS_URL: {{ jenkins_url }}
-```
-
-## Handlers
-- Restart Jenkins service
-- Install Jenkins plugins
-
-## Security Considerations
-- Custom admin password
-- Automated setup wizard disabled
-- Proper file permissions
-- Docker group membership
-
-## Go back to:
-
-### [Roles Hub](roles-hub.md)
+[Roles hub](roles-hub.md)

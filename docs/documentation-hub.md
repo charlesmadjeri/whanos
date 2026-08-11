@@ -1,9 +1,6 @@
 # Documentation Hub
 
-## [Ansible](ansible/ansible-hub.md)
+- [Ansible](ansible/ansible-hub.md) — VPS playbook and roles  
+- [Jenkins](jenkins/jenkins-hub.md) — start, use, plugins  
 
-## [Jenkins](jenkins/jenkins-hub.md)
-
-## Go back to:
-
-### [README](../README.md)
+[README](../README.md)

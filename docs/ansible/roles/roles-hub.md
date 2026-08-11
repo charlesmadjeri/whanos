@@ -1,42 +1,12 @@
-# Ansible Roles
+# Roles
 
-This directory contains documentation for each role used in the Ansible setup.
+| Role | Job |
+|---|---|
+| [UFW](ufw.md) | Allow 22/80, default deny |
+| [Docker](docker.md) | Docker CE for Jenkins builds |
+| [Jenkins](jenkins.md) | Install, Casc, plugins, kubeconfig |
+| [Nginx](nginx.md) | Reverse proxy to Jenkins :8080 |
 
-## Overview
+Order is fixed in the playbook; do not reorder.
 
-The Whanos infrastructure uses four main roles:
-
-### [Jenkins](jenkins.md)
-- CI/CD server installation and configuration
-- Plugin management
-- Docker integration
-- Configuration as Code setup
-
-### [Nginx](nginx.md)
-- Reverse proxy configuration
-- SSL/TLS termination
-- HTTP traffic handling
-- Jenkins proxy settings
-
-### [UFW](ufw.md)
-- Firewall configuration
-- Port management
-- Security rules
-- Default policies
-
-### [Docker](docker.md)
-- Container runtime installation
-- Docker daemon configuration
-- Group permissions
-- System requirements
-
-## Role Dependencies
-
-1. UFW must be configured first for security
-2. Docker is required before Jenkins for container support
-3. Jenkins must be running before Nginx configuration
-4. Nginx is configured last as the front-end proxy
-
-## Go back to:
-
-### [Ansible Hub](../ansible-hub.md)
+[Ansible hub](../ansible-hub.md)
