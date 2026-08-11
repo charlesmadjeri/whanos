@@ -15,6 +15,20 @@
     dest: /usr/local/bin/yq
     mode: '0755'
 
+- name: Install doctl (DOKS kubeconfig exec auth)
+  unarchive:
+    src: "https://github.com/digitalocean/doctl/releases/download/v1.120.0/doctl-1.120.0-linux-amd64.tar.gz"
+    dest: /usr/local/bin
+    remote_src: yes
+    mode: '0755'
+    creates: /usr/local/bin/doctl
+
+- name: Install kubectl
+  get_url:
+    url: https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl
+    dest: /usr/local/bin/kubectl
+    mode: '0755'
+
 - name: Download Jenkins plugin manager
   get_url:
     url: https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/2.12.11/jenkins-plugin-manager-2.12.11.jar

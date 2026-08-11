@@ -27,6 +27,11 @@ RUN mkdir -p /var/lib/jenkins/kube && \
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
     chmod +x kubectl && \
     mv kubectl /usr/local/bin/
+# DOKS kubeconfigs use exec auth via doctl; Jenkins needs it on PATH.
+RUN DOCTL_VERSION=1.120.0 && \
+    curl -sL "https://github.com/digitalocean/doctl/releases/download/v${DOCTL_VERSION}/doctl-${DOCTL_VERSION}-linux-amd64.tar.gz" \
+      | tar -xz -C /usr/local/bin doctl && \
+    chmod +x /usr/local/bin/doctl
 RUN wget https://github.com/mikefarah/yq/releases/download/v4.35.1/yq_linux_amd64 -O /usr/bin/yq && \
     chmod +x /usr/bin/yq
 

@@ -25,6 +25,12 @@ if [ ! -f "${KUBECONFIG}" ]; then
     exit 1
 fi
 
+# DigitalOcean kubeconfigs call `doctl` for tokens; reuse the DO API token
+# already bound as REGISTRY_TOKEN for registry login.
+if [ -z "${DIGITALOCEAN_ACCESS_TOKEN:-}" ] && [ -n "${REGISTRY_TOKEN:-}" ]; then
+    export DIGITALOCEAN_ACCESS_TOKEN="${REGISTRY_TOKEN}"
+fi
+
 REPLICAS=$(yq e '.deployment.replicas // 1' whanos.yml)
 PORT_COUNT=$(yq e '.deployment.ports // [] | length' whanos.yml)
 
