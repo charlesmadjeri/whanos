@@ -1,16 +1,24 @@
-FROM maven:3.9-amazoncorretto-21
+# Build stage provides Maven; final image is JRE-only with Maven copied for ONBUILD,
+# then removed in the child image after packaging (subject: slim runtime).
+FROM maven:3.9-amazoncorretto-21 AS toolchain
+
+FROM eclipse-temurin:21-jre-jammy
+
+COPY --from=toolchain /usr/share/maven /opt/maven
+ENV MAVEN_HOME=/opt/maven
+ENV PATH="${MAVEN_HOME}/bin:${PATH}"
 
 SHELL ["/bin/bash", "-c"]
 
 ONBUILD COPY . /app
-
 ONBUILD WORKDIR /app
 
-# Build the jar, then leave only what runtime needs (subject: slim image).
-ONBUILD RUN mvn dependency:resolve -f app/pom.xml \
-            && mvn package -f app/pom.xml \
+# Build the jar, keep only app.jar, drop Maven + build caches from the child image.
+ONBUILD RUN mvn -B -f app/pom.xml -DskipTests dependency:resolve \
+            && mvn -B -f app/pom.xml -DskipTests package \
             && cp app/target/app.jar /tmp/app.jar \
             && find /app -mindepth 1 -delete \
-            && mv /tmp/app.jar /app/app.jar
+            && mv /tmp/app.jar /app/app.jar \
+            && rm -rf /opt/maven /root/.m2
 
 ONBUILD CMD ["java", "-jar", "app.jar"]

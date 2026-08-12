@@ -1,19 +1,19 @@
-FROM maven:3.9-amazoncorretto-21
+FROM maven:3.9-amazoncorretto-21 AS build
 
-SHELL ["/bin/bash", "-c"]
-
-WORKDIR /app
-
+WORKDIR /src
 COPY . .
 
 RUN if [ -f "app/pom.xml" ]; then \
-        mvn dependency:resolve -f app/pom.xml && \
-        mvn package -f app/pom.xml && \
-        cp app/target/app.jar /app.jar && \
-        rm -rf * && \
-        mv /app.jar .; \
+        mvn -B -f app/pom.xml -DskipTests dependency:resolve \
+        && mvn -B -f app/pom.xml -DskipTests package \
+        && cp app/target/app.jar /tmp/app.jar; \
+    else \
+        echo "app/pom.xml missing" >&2; exit 1; \
     fi
 
-RUN rm -rf Dockerfile* .git*
+FROM eclipse-temurin:21-jre-jammy
+
+WORKDIR /app
+COPY --from=build /tmp/app.jar /app/app.jar
 
 CMD ["java", "-jar", "app.jar"]
