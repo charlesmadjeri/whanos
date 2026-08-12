@@ -111,8 +111,11 @@ if [ "${PORT_COUNT}" -gt 0 ]; then
 
     echo "Waiting for external IP..."
     for i in {1..30}; do
-        EXTERNAL_IP=$(kubectl get service "${DOCKER_TAG}" -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-        if [ -n "$EXTERNAL_IP" ]; then
+        EXTERNAL_IP=$(kubectl get service "${DOCKER_TAG}" -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+        # First line only, strip whitespace (no pipes — pipefail + head → SIGPIPE 141).
+        EXTERNAL_IP="${EXTERNAL_IP%%$'\n'*}"
+        EXTERNAL_IP="${EXTERNAL_IP//[[:space:]]/}"
+        if [[ -n "${EXTERNAL_IP}" && "${EXTERNAL_IP}" != "null" ]]; then
             for port in $(yq e '.deployment.ports[]' whanos.yml); do
                 echo "Service available at: http://${EXTERNAL_IP}:${port}"
             done

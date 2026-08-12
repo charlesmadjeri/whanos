@@ -17,6 +17,11 @@ case "$1" in
   cluster-info) echo "Kubernetes control plane is running at https://example.invalid"; exit 0 ;;
   apply) exit 0 ;;
   get)
+    # jsonpath for LoadBalancer IP (apply_k8s waits on this)
+    if [[ "$*" == *jsonpath=* ]]; then
+      echo -n "203.0.113.10"
+      exit 0
+    fi
     if [[ "$*" == *nodes* ]]; then
       echo "NAME STATUS"
       echo "node-1 Ready"
@@ -55,21 +60,17 @@ contexts: []
 users: []
 EOF
 
+# Avoid `cmd | grep -q` under pipefail (SIGPIPE → exit 141).
+
 # 1) no whanos.yml → skip
-if ! bash "${ROOT}/jenkins/scripts/apply_k8s.sh" | tee "${TMP}/out1" | grep -q "No whanos.yml"; then
-  echo "FAIL: expected skip without whanos.yml"
-  exit 1
-fi
+bash "${ROOT}/jenkins/scripts/apply_k8s.sh" >"${TMP}/out1"
+grep -q "No whanos.yml" "${TMP}/out1"
 echo "OK  skip without whanos.yml"
 
 # 2) deployment null → skip
 printf 'other: true\n' > whanos.yml
-# yq: .deployment == null is true when key missing
-if ! bash "${ROOT}/jenkins/scripts/apply_k8s.sh" | tee "${TMP}/out2" | grep -qE "No deployment|skipping"; then
-  echo "FAIL: expected skip without deployment"
-  cat "${TMP}/out2"
-  exit 1
-fi
+bash "${ROOT}/jenkins/scripts/apply_k8s.sh" >"${TMP}/out2"
+grep -qE "No deployment|skipping" "${TMP}/out2"
 echo "OK  skip without deployment"
 
 # 3) full deploy with resources + multi-port
@@ -91,13 +92,16 @@ EOF
 bash "${ROOT}/jenkins/scripts/apply_k8s.sh" | tee "${TMP}/out3"
 test -f k8s-manifest.yml
 
-yq e '.spec.replicas' k8s-manifest.yml | grep -qx '3'
-yq e '.spec.template.spec.containers[0].imagePullPolicy' k8s-manifest.yml | grep -qx 'Always'
-yq e '.spec.template.metadata.annotations["whanos/build"]' k8s-manifest.yml | grep -qx '42'
-yq e '.spec.template.spec.containers[0].resources.limits.memory' k8s-manifest.yml | grep -qx '128M'
-yq e '.spec.template.spec.containers[0].ports | length' k8s-manifest.yml | grep -qx '2'
-yq e 'select(.kind == "Service") | .spec.ports | length' k8s-manifest.yml | grep -qx '2'
+# Multi-doc YAML (Deployment --- Service): always select by kind.
+[[ "$(yq e 'select(.kind == "Deployment") | .spec.replicas' k8s-manifest.yml)" == "3" ]]
+[[ "$(yq e 'select(.kind == "Deployment") | .spec.template.spec.containers[0].imagePullPolicy' k8s-manifest.yml)" == "Always" ]]
+[[ "$(yq e 'select(.kind == "Deployment") | .spec.template.metadata.annotations["whanos/build"]' k8s-manifest.yml)" == "42" ]]
+[[ "$(yq e 'select(.kind == "Deployment") | .spec.template.spec.containers[0].resources.limits.memory' k8s-manifest.yml)" == "128M" ]]
+[[ "$(yq e 'select(.kind == "Deployment") | .spec.template.spec.containers[0].ports | length' k8s-manifest.yml)" == "2" ]]
+[[ "$(yq e 'select(.kind == "Service") | .spec.ports | length' k8s-manifest.yml)" == "2" ]]
 grep -q 'kubectl apply' "${MOCK_LOG}"
+grep -q 'Service available at: http://203.0.113.10:3000' "${TMP}/out3"
+grep -q 'Service available at: http://203.0.113.10:8080' "${TMP}/out3"
 
 echo "OK  manifest generation + mocked apply"
 
