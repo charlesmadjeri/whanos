@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""Merge terraform-generated Ansible vars into group_vars/all.yml (non-secret keys only)."""
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+GENERATED = ROOT / "ansible/group_vars/tf.generated.yml"
+ALL_YML = ROOT / "ansible/group_vars/all.yml"
+EXAMPLE = ROOT / "ansible/group_vars/all.example.yml"
+
+# Keys Terraform owns; secrets stay in .env
+MERGE_KEYS = (
+    "vps_ip",
+    "jenkins_url",
+    "registry_host",
+    "registry_name",
+    "do_volume_device",
+    "do_volume_mount",
+    "jenkins_tmpdir",
+)
+
+
+def parse_simple_yaml_map(text: str) -> dict[str, str]:
+    """Parse flat `key: "value"` / `key: value` lines (enough for tf.generated.yml)."""
+    out: dict[str, str] = {}
+    for line in text.splitlines():
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        m = re.match(r"^([A-Za-z0-9_]+):\s*(.*)$", s)
+        if not m:
+            continue
+        key, raw = m.group(1), m.group(2).strip()
+        if raw.startswith(("'", '"')) and len(raw) >= 2 and raw[-1] == raw[0]:
+            raw = raw[1:-1]
+        out[key] = raw
+    return out
+
+
+def upsert(text: str, key: str, value: str) -> str:
+    line = f'{key}: "{value}"'
+    pattern = re.compile(rf"^{re.escape(key)}:\s*.*$", re.M)
+    if pattern.search(text):
+        return pattern.sub(line, text, count=1)
+    if not text.endswith("\n"):
+        text += "\n"
+    return text + line + "\n"
+
+
+def main() -> int:
+    if not GENERATED.is_file():
+        print(f"Missing {GENERATED} — run make terraform-up first", file=sys.stderr)
+        return 1
+    if not ALL_YML.is_file():
+        if EXAMPLE.is_file():
+            ALL_YML.write_text(EXAMPLE.read_text(encoding="utf-8"), encoding="utf-8")
+            print(f"Created {ALL_YML} from example")
+        else:
+            print(f"Missing {ALL_YML}", file=sys.stderr)
+            return 1
+
+    gen = parse_simple_yaml_map(GENERATED.read_text(encoding="utf-8"))
+    text = ALL_YML.read_text(encoding="utf-8")
+    changed = []
+    for key in MERGE_KEYS:
+        if key not in gen or gen[key] == "":
+            continue
+        new_text = upsert(text, key, gen[key])
+        if new_text != text:
+            changed.append(key)
+            text = new_text
+    ALL_YML.write_text(text, encoding="utf-8")
+    if changed:
+        print("Merged into all.yml:", ", ".join(changed))
+    else:
+        print("all.yml already up to date with tf.generated.yml")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

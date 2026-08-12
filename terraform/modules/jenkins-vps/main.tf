@@ -9,6 +9,10 @@ terraform {
       source  = "hashicorp/local"
       version = "~> 2.5"
     }
+    external = {
+      source  = "hashicorp/external"
+      version = "~> 2.3"
+    }
   }
 }
 
@@ -72,9 +76,37 @@ variable "volume_name" {
   default     = ""
 }
 
+# Derive MD5 fingerprint of the local public key (matches DigitalOcean's fingerprint).
+data "external" "ssh_fingerprint" {
+  program = ["bash", "${path.module}/fingerprint.sh"]
+  query = {
+    path = abspath(var.ssh_public_key_path)
+  }
+}
+
+# Reuse an account key with the same fingerprint (avoids 422 "SSH Key is already in use").
+data "digitalocean_ssh_keys" "existing" {
+  filter {
+    key    = "fingerprint"
+    values = [data.external.ssh_fingerprint.result.fingerprint]
+  }
+}
+
+locals {
+  existing_ssh_keys = try(data.digitalocean_ssh_keys.existing.ssh_keys, [])
+  reuse_ssh_key     = length(local.existing_ssh_keys) > 0
+}
+
 resource "digitalocean_ssh_key" "this" {
+  count = local.reuse_ssh_key ? 0 : 1
+
   name       = "${var.name}-ansible"
   public_key = file(var.ssh_public_key_path)
+}
+
+locals {
+  ssh_key_id          = local.reuse_ssh_key ? local.existing_ssh_keys[0].id : digitalocean_ssh_key.this[0].id
+  ssh_key_fingerprint = local.reuse_ssh_key ? local.existing_ssh_keys[0].fingerprint : digitalocean_ssh_key.this[0].fingerprint
 }
 
 resource "digitalocean_droplet" "this" {
@@ -82,7 +114,7 @@ resource "digitalocean_droplet" "this" {
   region     = var.region
   size       = var.size
   image      = var.image
-  ssh_keys   = [digitalocean_ssh_key.this.id]
+  ssh_keys   = [local.ssh_key_id]
   tags       = var.tags
   # Basic graphs are free; leave off unless you want the agent.
   monitoring = false
@@ -181,7 +213,7 @@ output "droplet_id" {
 }
 
 output "ssh_key_fingerprint" {
-  value = digitalocean_ssh_key.this.fingerprint
+  value = local.ssh_key_fingerprint
 }
 
 output "volume_name" {

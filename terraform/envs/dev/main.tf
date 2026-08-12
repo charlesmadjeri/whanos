@@ -10,6 +10,10 @@ terraform {
       source  = "hashicorp/local"
       version = "~> 2.5"
     }
+    external = {
+      source  = "hashicorp/external"
+      version = "~> 2.3"
+    }
   }
 
   # Optional: configure a remote backend (DO Spaces / S3) before team use.
@@ -149,9 +153,9 @@ output "cluster_id" {
 
 output "next_steps" {
   value = <<-EOT
-    1) doctl registry kubernetes-integration create --cluster-uuid ${module.cluster.id}
-    2) Merge ansible/group_vars/tf.generated.yml into all.yml (add passwords/tokens)
-    3) make run-ansible
-    4) Open http://${module.jenkins_vps.ipv4_address}/
+    1) doctl kubernetes cluster registry add ${module.cluster.id}
+    2) make merge-tf-ansible && make run-ansible
+       (secrets stay in repo-root .env)
+    3) Open http://${module.jenkins_vps.ipv4_address}/
   EOT
 }

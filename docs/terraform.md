@@ -102,7 +102,7 @@ make terraform-plan ENV=prod
 make terraform-up ENV=prod
 ```
 
-Prod enforces `cluster_node_count >= 2`, defaults to a larger Jenkins size, and can open firewall **443** (`enable_https = true`). TLS certificates are still installed/configured in Ansible/nginx (`jenkins_tls_*` in `all.yml`).
+Prod enforces `cluster_node_count >= 2`, defaults to a larger Jenkins size, and can open firewall **443** (`enable_https = true`). TLS: set `jenkins_tls_acme_enabled` (Let's Encrypt) or manual `jenkins_tls_*` paths in Ansible `all.yml`.
 
 ## Make targets
 
@@ -112,7 +112,7 @@ Prod enforces `cluster_node_count >= 2`, defaults to a larger Jenkins size, and 
 | `make terraform-plan ENV=dev` | plan |
 | `make terraform-up ENV=dev` | apply + registry↔cluster integration |
 | `make terraform-down ENV=dev` | destroy |
-| `make infra ENV=dev` | `terraform-up` then remind Ansible handoff |
+| `make infra ENV=dev` | `terraform-up` → merge `tf.generated.yml` into `all.yml` → `run-ansible` |
 
 After the first `init`, commit the provider lockfile:
 

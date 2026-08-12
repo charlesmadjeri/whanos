@@ -130,10 +130,9 @@ output "cluster_id" {
 
 output "next_steps" {
   value = <<-EOT
-    1) doctl registry kubernetes-integration create --cluster-uuid ${module.cluster.id}
-    2) Merge ansible/group_vars/tf.generated.yml into all.yml (passwords/tokens)
-    3) Configure TLS in Ansible/nginx (enable_https firewall already open)
-    4) make run-ansible
-    5) Open https://${module.jenkins_vps.ipv4_address}/
+    1) doctl kubernetes cluster registry add ${module.cluster.id}
+    2) make merge-tf-ansible && make run-ansible
+       (secrets in .env; optional jenkins_tls_acme_enabled for HTTPS)
+    3) Open https://${module.jenkins_vps.ipv4_address}/ (or http if TLS not enabled yet)
   EOT
 }
