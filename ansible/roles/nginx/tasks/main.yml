@@ -5,36 +5,32 @@
     state: present
     update_cache: yes
 
-- name: Ensure TLS certificate paths exist when TLS is enabled
-  when: jenkins_tls_enabled | default(false) | bool
-  block:
-    - name: Require certificate paths
-      assert:
-        that:
-          - jenkins_tls_cert_path | default('') | length > 0
-          - jenkins_tls_key_path | default('') | length > 0
-        fail_msg: "Set jenkins_tls_cert_path and jenkins_tls_key_path when jenkins_tls_enabled is true"
+- name: Ensure ACME webroot exists
+  file:
+    path: /var/www/html
+    state: directory
+    mode: "0755"
 
-    - name: Check TLS certificate file
-      stat:
-        path: "{{ jenkins_tls_cert_path }}"
-      register: tls_cert
+- name: Install certbot when ACME is requested
+  when: jenkins_tls_acme_enabled | default(false) | bool
+  apt:
+    name: certbot
+    state: present
+    update_cache: yes
 
-    - name: Check TLS key file
-      stat:
-        path: "{{ jenkins_tls_key_path }}"
-      register: tls_key
+- name: Validate ACME inputs
+  when: jenkins_tls_acme_enabled | default(false) | bool
+  assert:
+    that:
+      - jenkins_tls_acme_email | default('') | length > 0
+      - jenkins_tls_server_name | default('') | length > 0
+      - (jenkins_tls_server_name | regex_search('^[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$')) is not none
+    fail_msg: >-
+      ACME needs jenkins_tls_acme_email and a DNS hostname in jenkins_tls_server_name
+      (not a bare IP). Point the DNS A record at this VPS before running.
 
-    - name: Fail if TLS files are missing
-      assert:
-        that:
-          - tls_cert.stat.exists
-          - tls_key.stat.exists
-        fail_msg: >-
-          TLS enabled but certificate/key not found. Install certs (e.g. certbot) then re-run,
-          or set jenkins_tls_enabled: false for HTTP-only.
-
-- name: Configure Nginx for Jenkins
+# First pass: HTTP (with ACME location). TLS template only if certs already present.
+- name: Configure Nginx for Jenkins (HTTP / existing TLS)
   template:
     src: jenkins.nginx.conf.j2
     dest: /etc/nginx/sites-available/jenkins
@@ -59,3 +55,61 @@
     name: nginx
     state: started
     enabled: yes
+
+- name: Apply Nginx config before ACME HTTP-01
+  when: jenkins_tls_acme_enabled | default(false) | bool
+  meta: flush_handlers
+
+- name: Obtain Let's Encrypt certificate (webroot)
+  when: jenkins_tls_acme_enabled | default(false) | bool
+  command: >-
+    certbot certonly --webroot -w /var/www/html
+    -d {{ jenkins_tls_server_name }}
+    --email {{ jenkins_tls_acme_email }}
+    --agree-tos --non-interactive --keep-until-expiring
+  register: certbot_issue
+  changed_when: >-
+    'Certificate not yet due for renewal' not in (certbot_issue.stdout | default(''))
+
+- name: Enable TLS paths from Let's Encrypt
+  when: jenkins_tls_acme_enabled | default(false) | bool
+  set_fact:
+    jenkins_tls_enabled: true
+    jenkins_tls_cert_path: "/etc/letsencrypt/live/{{ jenkins_tls_server_name }}/fullchain.pem"
+    jenkins_tls_key_path: "/etc/letsencrypt/live/{{ jenkins_tls_server_name }}/privkey.pem"
+
+- name: Require certificate files when TLS is enabled
+  when: jenkins_tls_enabled | default(false) | bool
+  block:
+    - name: Require certificate paths
+      assert:
+        that:
+          - jenkins_tls_cert_path | default('') | length > 0
+          - jenkins_tls_key_path | default('') | length > 0
+        fail_msg: >-
+          Set jenkins_tls_cert_path/key_path, or enable jenkins_tls_acme_enabled.
+
+    - name: Check TLS certificate file
+      stat:
+        path: "{{ jenkins_tls_cert_path }}"
+      register: tls_cert
+
+    - name: Check TLS key file
+      stat:
+        path: "{{ jenkins_tls_key_path }}"
+      register: tls_key
+
+    - name: Fail if TLS files are missing
+      assert:
+        that:
+          - tls_cert.stat.exists
+          - tls_key.stat.exists
+        fail_msg: TLS enabled but certificate/key not found on the VPS.
+
+- name: Re-configure Nginx with TLS after ACME
+  when: jenkins_tls_acme_enabled | default(false) | bool
+  template:
+    src: jenkins.nginx.conf.j2
+    dest: /etc/nginx/sites-available/jenkins
+    mode: "0644"
+  notify: reload nginx

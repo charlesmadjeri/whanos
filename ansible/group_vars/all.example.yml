@@ -2,8 +2,8 @@
 # After Terraform: merge ansible/group_vars/tf.generated.yml (vps_ip, volumes, …).
 
 vps_ip: ""
-# Optional password auth (omit when using the SSH key below)
-vps_root_password: ""
+# Leave unset for SSH-key auth. Never set to "" — Ansible treats that as password mode.
+# vps_root_password: "only-if-you-must"
 
 # Project-local SSH key for Ansible (generate under ansible/ssh/ — see docs)
 # inventory_dir = ansible/ → ansible/ssh/whanos_vps
@@ -14,8 +14,13 @@ vps_ssh_private_key_file: "{{ inventory_dir }}/ssh/whanos_vps"
 jenkins_admin_password: "{{ lookup('env', 'JENKINS_ADMIN_PASSWORD') }}"
 jenkins_url: "http://{{ vps_ip }}"
 
-# Optional TLS (prod). Place certs on the VPS first (certbot, etc.), then enable.
+# Optional TLS (prod). Manual certs *or* Let's Encrypt ACME:
+#   jenkins_tls_acme_enabled: true
+#   jenkins_tls_acme_email: you@example.com
+#   jenkins_tls_server_name: jenkins.example.com   # DNS A → this VPS
 jenkins_tls_enabled: false
+jenkins_tls_acme_enabled: false
+jenkins_tls_acme_email: ""
 jenkins_tls_server_name: "{{ vps_ip }}"
 jenkins_tls_cert_path: "" # e.g. /etc/letsencrypt/live/jenkins.example.com/fullchain.pem
 jenkins_tls_key_path: ""  # e.g. /etc/letsencrypt/live/jenkins.example.com/privkey.pem

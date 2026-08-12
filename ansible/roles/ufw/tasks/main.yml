@@ -18,7 +18,9 @@
     proto: tcp
 
 - name: Allow HTTPS
-  when: jenkins_tls_enabled | default(false) | bool
+  when: >-
+    (jenkins_tls_enabled | default(false) | bool)
+    or (jenkins_tls_acme_enabled | default(false) | bool)
   ufw:
     rule: allow
     port: 443
