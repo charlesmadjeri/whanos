@@ -9,7 +9,7 @@
 Typical flow on DigitalOcean:
 
 1. [Terraform](terraform.md) — `make terraform-up ENV=dev`
-2. Merge `tf.generated.yml` into `all.yml` + secrets
+2. Keep secrets in `.env`; merge `tf.generated.yml` into `all.yml` for IP/volumes only.
 3. [Ansible](ansible/ansible-hub.md) — `make run-ansible`
 4. [Start Jenkins](jenkins/start-jenkins.md) / [Use Jenkins](jenkins/use-jenkins.md)
 

@@ -44,8 +44,21 @@ variable "kubernetes_version" {
 }
 
 variable "auto_upgrade" {
-  type    = bool
-  default = true
+  type        = bool
+  default     = false
+  description = "Patch upgrades. Off for lab (avoids surprise node churn)."
+}
+
+variable "surge_upgrade" {
+  type        = bool
+  default     = false
+  description = "During upgrades, DO may add a temporary extra node (billed). Keep false for lab."
+}
+
+variable "ha" {
+  type        = bool
+  default     = false
+  description = "HA control plane (3 CP nodes). Much slower to provision and costs extra; leave false for lab."
 }
 
 variable "kubeconfig_path" {
@@ -62,10 +75,13 @@ locals {
 }
 
 resource "digitalocean_kubernetes_cluster" "this" {
-  name         = var.name
-  region       = var.region
-  version      = local.k8s_version
-  auto_upgrade = var.auto_upgrade
+  name          = var.name
+  region        = var.region
+  version       = local.k8s_version
+  auto_upgrade  = var.auto_upgrade
+  surge_upgrade = var.surge_upgrade
+  # Provider/API may default HA on; pin explicitly. HA often 15–30+ min vs ~5 min basic.
+  ha            = var.ha
 
   node_pool {
     name       = "${var.name}-default-pool"

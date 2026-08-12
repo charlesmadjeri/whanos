@@ -1,4 +1,6 @@
-# VPS Configuration
+# VPS Configuration (non-secret). Secrets come from repo-root .env via lookup('env').
+# After Terraform: merge ansible/group_vars/tf.generated.yml (vps_ip, volumes, …).
+
 vps_ip: ""
 # Optional password auth (omit when using the SSH key below)
 vps_root_password: ""
@@ -7,8 +9,9 @@ vps_root_password: ""
 # inventory_dir = ansible/ → ansible/ssh/whanos_vps
 vps_ssh_private_key_file: "{{ inventory_dir }}/ssh/whanos_vps"
 
-# Jenkins Configuration
-jenkins_admin_password: "change_me"
+# Jenkins — password from .env (JENKINS_ADMIN_PASSWORD). URL is always the VPS
+# (Compose-only JENKINS_URL=localhost must not leak into Ansible Casc).
+jenkins_admin_password: "{{ lookup('env', 'JENKINS_ADMIN_PASSWORD') }}"
 jenkins_url: "http://{{ vps_ip }}"
 
 # Optional TLS (prod). Place certs on the VPS first (certbot, etc.), then enable.
@@ -23,17 +26,16 @@ whanos_root: "/opt/whanos"
 
 # DigitalOcean block volume (optional; leave empty to skip)
 # Small droplets use tmpfs /tmp (~half of RAM), which trips Jenkins' 1GiB free-space check.
-# Attach a DO volume, then set these so Ansible mounts it and points Jenkins tmp there.
-do_volume_device: "" # e.g. /dev/disk/by-id/scsi-0DO_Volume_volume-fra1-...
-do_volume_mount: "" # e.g. /mnt/volume_fra1_...
+# Terraform fills these in tf.generated.yml for the $4 droplet path.
+do_volume_device: "" # e.g. /dev/disk/by-id/scsi-0DO_Volume_whanos-dev-jenkins-tmp
+do_volume_mount: "" # e.g. /mnt/whanos-dev-jenkins-tmp
 jenkins_tmpdir: "{{ do_volume_mount }}/jenkins-tmp"
 
-# DigitalOcean Container Registry
-# Required for pushing images to DigitalOcean Container Registry
-registry_host: "registry.digitalocean.com"
-registry_name: "whanos" # Your DOCR registry name
-registry_username: "" # Your DigitalOcean email
-registry_token: ""    # Your DigitalOcean API token
+# Registry — from .env (REGISTRY_TOKEN defaults to DIGITALOCEAN_TOKEN)
+registry_host: "{{ lookup('env', 'REGISTRY_HOST') | default('registry.digitalocean.com', true) }}"
+registry_name: "{{ lookup('env', 'REGISTRY_NAME') | default('whanos', true) }}"
+registry_username: "{{ lookup('env', 'REGISTRY_USERNAME') }}"
+registry_token: "{{ lookup('env', 'REGISTRY_TOKEN') | default(lookup('env', 'DIGITALOCEAN_TOKEN'), true) }}"
 
 # Kubernetes Configuration
 local_kubeconfig_path: "{{ playbook_dir }}/../kubeconfig.yaml"

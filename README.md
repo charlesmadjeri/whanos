@@ -1,6 +1,27 @@
-# Whanos Project
+# Whanos
 
-Whanos detects a supported app in a Git repo, builds a Docker image, pushes it to a registry, and—when `whanos.yml` has a `deployment`—rolls it out on Kubernetes via Jenkins.
+> Detect. Containerize. Ship. Deploy.
+
+Whanos turns a Git push into a language-aware Docker build, a registry push, and—when you want it—a Kubernetes rollout. Jenkins is the control plane; Terraform and Ansible rebuild the platform from this repo.
+
+## Features
+
+| | |
+|:---|:---|
+| **Language auto-detection** | C · Java · JavaScript/TypeScript · Python · Befunge-93 — one matching criterion or the job fails cleanly |
+| **Base + standalone images** | Official Hub bases, slim runtimes, `docker build -t whanos-<lang> - < Dockerfile.base` |
+| **Custom Dockerfiles** | Apps may `FROM whanos-<lang>` after bases are built |
+| **Private Git** | HTTPS PAT or SSH via `link-project` credentials |
+| **SCM every minute** | Linked projects poll, rebuild, and redeploy on change |
+| **Optional K8s deploy** | Only when `whanos.yml` has `deployment` — replicas, resources, ports → LoadBalancer |
+| **IaC end-to-end** | Terraform: DOCR + DOKS + cheap Jenkins VPS → Ansible: Docker / Casc / Nginx |
+| **Local or VPS** | Compose for development; Ansible (or Terraform → Ansible) for defense-ready infra |
+
+```text
+  git push ──► Jenkins poll ──► detect lang ──► build & push image
+                                      │
+                                      └─► whanos.yml? ──► kubectl apply ──► LoadBalancer
+```
 
 <details>
 <summary><strong>Production use cases</strong></summary>
@@ -12,8 +33,6 @@ Whanos detects a supported app in a Git repo, builds a Docker image, pushes it t
 | **Polyglot estates** | Language auto-detection with shared base images; optional custom `Dockerfile`. |
 | **Repeatable releases** | Build once, push, deploy the same artifact. |
 | **Small ops footprint** | Terraform provisions DO cloud; Ansible or Compose configures Jenkins. |
-
-Flow: push → Jenkins poll → build & push image → optional K8s deploy → LoadBalancer (or your ingress).
 
 </details>
 
@@ -36,7 +55,7 @@ cd whanos
 nix-shell
 ```
 
-Provides `make`, `kubectl`, `doctl`, `ansible`, `terraform`, `docker-compose`. Loads repo-root `.env` for `DIGITALOCEAN_TOKEN` when present. Docker daemon must be enabled in system NixOS config (user in `docker` group). `KUBECONFIG` is set to `./kubeconfig.yaml`.
+Provides `make`, `kubectl`, `doctl`, `ansible`, `terraform`, `docker-compose`. Loads repo-root `.env` when present. Docker daemon must be enabled in system NixOS config (user in `docker` group). `KUBECONFIG` is set to `./kubeconfig.yaml`.
 
 ```bash
 nix-shell --run 'doctl account get'   # one-shot
@@ -52,44 +71,38 @@ For zsh inside `nix-shell`, use [`any-nix-shell`](https://github.com/haslersn/an
 git clone git@github.com:charlesmadjeri/whanos.git whanos
 cd whanos
 
-cp jenkins/.env.example jenkins/.env                 # Compose Jenkins
-cp .env.example .env                                 # DIGITALOCEAN_TOKEN (terraform/doctl)
-cp ansible/group_vars/all.example.yml ansible/group_vars/all.yml   # VPS / Ansible
+cp .env.example .env                                 # all secrets (Compose + Terraform + Ansible)
+cp ansible/group_vars/all.example.yml ansible/group_vars/all.yml   # VPS facts (IP, volumes, TLS)
 ```
 
 ### Credentials
 
 <details>
-<summary><strong>Repo-root <code>.env</code></strong> — Terraform / doctl</summary>
+<summary><strong>Repo-root <code>.env</code></strong> — single secrets file</summary>
+
+Used by Compose, Terraform/`doctl`, and Ansible (`lookup('env')`). Gitignored.
 
 | Variable | Role |
 |---|---|
-| `DIGITALOCEAN_TOKEN` | DO API token (also used as `DIGITALOCEAN_ACCESS_TOKEN` for doctl) |
-
-`make terraform-*` and `nix-shell` load this file automatically. Do not put the token in `terraform.tfvars`.
-
-</details>
-
-<details>
-<summary><strong>Compose</strong> — <code>jenkins/.env</code></summary>
-
-| Variable | Role |
-|---|---|
+| `DIGITALOCEAN_TOKEN` | DO API token (Terraform, doctl; also default `REGISTRY_TOKEN`) |
 | `JENKINS_ADMIN_PASSWORD` | Jenkins `admin` password |
-| `JENKINS_URL` | e.g. `http://localhost:8080` |
+| `JENKINS_URL` | Compose only (e.g. `http://localhost:8080`); Ansible uses `http://{{ vps_ip }}` |
 | `REGISTRY_HOST` | Hostname only, e.g. `registry.digitalocean.com` |
 | `REGISTRY_NAME` | Registry / namespace |
-| `REGISTRY_USERNAME` / `REGISTRY_TOKEN` | Registry login |
-| `LOCAL_KUBECONFIG_PATH` | Usually `kubeconfig.yaml` |
+| `REGISTRY_USERNAME` | DO account email |
+| `REGISTRY_TOKEN` | Optional; defaults to `DIGITALOCEAN_TOKEN` |
+| `LOCAL_KUBECONFIG_PATH` / `KUBECONFIG_PATH` | Compose/Casc paths (usually leave defaults) |
+
+`make terraform-*` / `make run-ansible` load `.env` via `scripts/with-dotenv` (shell-safe for `#` in passwords); `nix-shell` and Compose do the same. Do not put tokens in `terraform.tfvars`.
 
 </details>
 
 <details>
-<summary><strong>Ansible</strong> — <code>ansible/group_vars/all.yml</code></summary>
+<summary><strong>Ansible facts</strong> — <code>ansible/group_vars/all.yml</code></summary>
 
-Set `vps_ip`, `jenkins_admin_password`, `jenkins_url`, `registry_*`, and `vps_ssh_private_key_file` (default: project key under `ansible/ssh/`). Optional: `vps_root_password`, `do_volume_*`, `jenkins_tls_*`.
+Non-secret / host-specific only: `vps_ip`, `vps_ssh_private_key_file`, optional `do_volume_*`, `jenkins_tls_*`. Passwords and registry secrets are read from `.env`.
 
-After **Terraform**, merge `ansible/group_vars/tf.generated.yml` into `all.yml` (IP, registry name, volume paths), then add passwords/tokens. Keep `kubeconfig.yaml` at the repo root.
+After **Terraform**, merge `ansible/group_vars/tf.generated.yml` into `all.yml` (IP, registry name, volume paths). Keep `kubeconfig.yaml` at the repo root.
 
 See [Ansible playbook](docs/ansible/playbook.md) and [Terraform](docs/terraform.md).
 
@@ -105,7 +118,7 @@ See [Ansible playbook](docs/ansible/playbook.md) and [Terraform](docs/terraform.
 Provisions DOCR + DOKS + Jenkins droplet (cheap lab defaults: **$4/mo** VPS + 5 GiB volume), then Ansible configures Jenkins.
 
 ```bash
-cp .env.example .env   # DIGITALOCEAN_TOKEN=...
+cp .env.example .env   # DIGITALOCEAN_TOKEN + Jenkins/registry secrets
 mkdir -p ansible/ssh
 test -f ansible/ssh/whanos_vps || \
   ssh-keygen -t ed25519 -f ansible/ssh/whanos_vps -N "" -C "whanos-vps-ansible"
@@ -114,7 +127,7 @@ cp terraform/envs/dev/terraform.tfvars.example terraform/envs/dev/terraform.tfva
 make terraform-plan ENV=dev
 make terraform-up ENV=dev
 
-# Merge ansible/group_vars/tf.generated.yml → all.yml (+ password, registry_username/token)
+# Merge ansible/group_vars/tf.generated.yml → all.yml (IP / volumes; secrets stay in .env)
 make run-ansible
 ```
 

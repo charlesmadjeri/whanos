@@ -84,7 +84,9 @@ resource "digitalocean_droplet" "this" {
   image      = var.image
   ssh_keys   = [digitalocean_ssh_key.this.id]
   tags       = var.tags
-  monitoring = true
+  # Basic graphs are free; leave off unless you want the agent.
+  monitoring = false
+  backups    = false
 }
 
 locals {

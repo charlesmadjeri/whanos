@@ -27,9 +27,9 @@ pkgs.mkShell {
       if [ -n "''${DIGITALOCEAN_ACCESS_TOKEN:-}" ] && [ -z "''${DIGITALOCEAN_TOKEN:-}" ]; then
         export DIGITALOCEAN_TOKEN="$DIGITALOCEAN_ACCESS_TOKEN"
       fi
-      echo "Loaded .env (DIGITALOCEAN_TOKEN for doctl/terraform)"
+      echo "Loaded .env (Compose / Terraform / Ansible / doctl)"
     else
-      echo "Tip: cp .env.example .env  # for DIGITALOCEAN_TOKEN"
+      echo "Tip: cp .env.example .env  # secrets for Compose, Terraform, Ansible"
     fi
   '';
 }

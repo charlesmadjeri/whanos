@@ -2,7 +2,7 @@
 
 Do this **after** registry credentials and `kubeconfig.yaml` are ready (Terraform, manual doctl, or Compose-only with a mounted kubeconfig).
 
-Login: `admin` / `JENKINS_ADMIN_PASSWORD` (or `jenkins_admin_password`). Signup is disabled.
+Login: `admin` / value of `JENKINS_ADMIN_PASSWORD` in repo-root `.env`. Signup is disabled.
 
 ## Path A — Terraform then Ansible (DigitalOcean)
 
@@ -10,7 +10,7 @@ Recommended full stack:
 
 ```bash
 make terraform-up ENV=dev
-# merge ansible/group_vars/tf.generated.yml into all.yml (+ secrets)
+# merge ansible/group_vars/tf.generated.yml into all.yml (IP/volumes; secrets in .env)
 make run-ansible
 # http://<vps_ip>/
 ```
@@ -28,7 +28,7 @@ make run-local-down | run-local-restart | run-local-reset
 docker compose logs -f jenkins
 ```
 
-Requires `jenkins/.env` and a readable `./kubeconfig.yaml` (and registry credentials for pushes).
+Requires repo-root `.env` (from `.env.example`) and a readable `./kubeconfig.yaml`.
 
 ## Path C — Ansible on an existing VPS
 

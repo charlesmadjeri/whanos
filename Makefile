@@ -14,21 +14,8 @@ TARGET_MAX_CHAR_NUM=20
 
 ENV ?= dev
 TF_DIR := terraform/envs/$(ENV)
-
-# Load DIGITALOCEAN_TOKEN (and friends) from repo-root .env when present.
-# Jenkins Compose keeps using jenkins/.env.
-ifneq (,$(wildcard .env))
-include .env
-export
-endif
-
-# Prefer DIGITALOCEAN_TOKEN; mirror to ACCESS_TOKEN for doctl if unset.
-ifneq ($(strip $(DIGITALOCEAN_TOKEN)),)
-export DIGITALOCEAN_ACCESS_TOKEN ?= $(DIGITALOCEAN_TOKEN)
-endif
-ifneq ($(strip $(DIGITALOCEAN_ACCESS_TOKEN)),)
-export DIGITALOCEAN_TOKEN ?= $(DIGITALOCEAN_ACCESS_TOKEN)
-endif
+# Shell-source .env (Make `include` treats # in values as comments).
+DOTENV := ./scripts/with-dotenv
 
 ## Show help
 help:
@@ -73,15 +60,18 @@ run-local-clean:
 
 ## Run the playbook to setup the server
 run-ansible:
-	ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook -i ansible/inventory.yml ansible/playbook.yml
+	$(DOTENV) env ANSIBLE_CONFIG=ansible/ansible.cfg \
+	  ansible-playbook -i ansible/inventory.yml ansible/playbook.yml
 
 ## Run the playbook to setup the server in verbose mode
 run-ansible-verbose:
-	ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook -i ansible/inventory.yml ansible/playbook.yml -vvv
+	$(DOTENV) env ANSIBLE_CONFIG=ansible/ansible.cfg \
+	  ansible-playbook -i ansible/inventory.yml ansible/playbook.yml -vvv
 
 ## Run the playbook to setup the server in very verbose mode
 run-ansible-very-verbose:
-	ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook -i ansible/inventory.yml ansible/playbook.yml -vvvvv
+	$(DOTENV) env ANSIBLE_CONFIG=ansible/ansible.cfg \
+	  ansible-playbook -i ansible/inventory.yml ansible/playbook.yml -vvvvv
 
 ## CI checks that do not need cloud credentials
 ci-detection:
@@ -102,31 +92,31 @@ ci-base-images:
 
 ## Terraform init for ENV=dev|prod
 terraform-init:
-	@test -n "$$DIGITALOCEAN_TOKEN" -o -n "$$DIGITALOCEAN_ACCESS_TOKEN" || \
-	  (echo "Missing DIGITALOCEAN_TOKEN. Copy .env.example → .env and set the token."; exit 1)
-	cd $(TF_DIR) && terraform init
+	@$(DOTENV) bash -c 'test -n "$$DIGITALOCEAN_TOKEN" -o -n "$$DIGITALOCEAN_ACCESS_TOKEN" || \
+	  (echo "Missing DIGITALOCEAN_TOKEN. Copy .env.example → .env and set the token."; exit 1)'
+	$(DOTENV) bash -c 'cd "$(TF_DIR)" && terraform init'
 
 ## Terraform plan for ENV=dev|prod
 terraform-plan: terraform-init
-	cd $(TF_DIR) && terraform plan
+	$(DOTENV) bash -c 'cd "$(TF_DIR)" && terraform plan'
 
 ## Provision registry + DOKS + Jenkins VPS (ENV=dev|prod)
 terraform-up: terraform-init
-	cd $(TF_DIR) && terraform apply -auto-approve
-	@CLUSTER_ID=$$(cd $(TF_DIR) && terraform output -raw cluster_id); \
+	$(DOTENV) bash -c 'cd "$(TF_DIR)" && terraform apply -auto-approve'
+	@$(DOTENV) bash -c 'CLUSTER_ID=$$(cd "$(TF_DIR)" && terraform output -raw cluster_id); \
 	  echo "Integrating DOCR with DOKS $$CLUSTER_ID..."; \
 	  doctl registry kubernetes-integration create --cluster-uuid "$$CLUSTER_ID" || \
 	  doctl registry kubernetes-integration create "$$CLUSTER_ID" || \
-	  echo "WARN: run DOCR↔DOKS integration manually if the command failed"
-	@echo "Next: merge ansible/group_vars/tf.generated.yml into all.yml, then make run-ansible"
-	@cd $(TF_DIR) && terraform output next_steps
+	  echo "WARN: run DOCR↔DOKS integration manually if the command failed"'
+	@echo "Next: merge ansible/group_vars/tf.generated.yml into all.yml (IP/volumes), then make run-ansible"
+	@$(DOTENV) bash -c 'cd "$(TF_DIR)" && terraform output next_steps'
 
 ## Destroy Terraform stack for ENV=dev|prod
 terraform-down:
-	@test -n "$$DIGITALOCEAN_TOKEN" -o -n "$$DIGITALOCEAN_ACCESS_TOKEN" || \
-	  (echo "Missing DIGITALOCEAN_TOKEN. Copy .env.example → .env and set the token."; exit 1)
-	cd $(TF_DIR) && terraform destroy -auto-approve
+	@$(DOTENV) bash -c 'test -n "$$DIGITALOCEAN_TOKEN" -o -n "$$DIGITALOCEAN_ACCESS_TOKEN" || \
+	  (echo "Missing DIGITALOCEAN_TOKEN. Copy .env.example → .env and set the token."; exit 1)'
+	$(DOTENV) bash -c 'cd "$(TF_DIR)" && terraform destroy -auto-approve'
 
 ## Provision cloud infra then remind Ansible handoff
 infra: terraform-up
-	@echo "Infra up. Fill secrets in ansible/group_vars/all.yml and run: make run-ansible"
+	@echo "Infra up. Secrets stay in .env; merge tf.generated.yml into all.yml, then: make run-ansible"

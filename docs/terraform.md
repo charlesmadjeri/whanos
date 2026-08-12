@@ -29,7 +29,7 @@ terraform/
 |---|---|---|
 | Jenkins VPS | `s-1vcpu-512mb-10gb`, Debian 13, `fra1` | **$4/mo** |
 | Block volume | 5 GiB (Jenkins `/tmp`) | ~$0.50/mo |
-| DOKS | 1× `s-2vcpu-2gb` (lab) | **dominates the bill** — destroy when idle |
+| DOKS | 1× `s-1vcpu-2gb` (cheapest lab size) | **dominates the bill** (~$12/mo) — destroy when idle |
 | DOCR | `starter` | low / free tier |
 
 The 512 MB droplet needs the volume (tmpfs `/tmp` is too small for Jenkins). Terraform writes `do_volume_*` into `ansible/group_vars/tf.generated.yml` for Ansible.
@@ -45,14 +45,14 @@ ssh-keygen -t ed25519 -f ansible/ssh/whanos_vps -N "" -C "whanos-vps-ansible"
 # private key stays local (gitignored); public key is referenced by tfvars
 ```
 
-- DigitalOcean API token in **repo-root** `.env` (gitignored; not `jenkins/.env`):
+- Secrets in **repo-root** `.env` (gitignored; see `.env.example`):
 
 ```bash
 cp .env.example .env
-# DIGITALOCEAN_TOKEN=dop_v1_...
+# DIGITALOCEAN_TOKEN=...  JENKINS_ADMIN_PASSWORD=...  REGISTRY_USERNAME=...
 ```
 
-`make terraform-*` and `nix-shell` load `.env` automatically (also sets `DIGITALOCEAN_ACCESS_TOKEN` for `doctl`).
+`make terraform-*`, Compose, `make run-ansible` (`scripts/with-dotenv`), and `nix-shell` load `.env` (also sets `DIGITALOCEAN_ACCESS_TOKEN` for `doctl`). (`jenkins/.env` is deprecated.)
 
 ## Quick start (dev)
 
@@ -61,7 +61,7 @@ cd whanos
 nix-shell   # optional but recommended
 
 cp .env.example .env
-# edit .env → DIGITALOCEAN_TOKEN
+# edit .env → DIGITALOCEAN_TOKEN + Jenkins/registry secrets
 
 cp terraform/envs/dev/terraform.tfvars.example terraform/envs/dev/terraform.tfvars
 # defaults already match the $4 droplet + 5 GiB volume
@@ -75,16 +75,13 @@ make terraform-up ENV=dev      # apply + DOCR↔DOKS integration attempt
 | File | Purpose |
 |---|---|
 | `kubeconfig.yaml` | Cluster access for Jenkins / local `kubectl` |
-| `ansible/group_vars/tf.generated.yml` | `vps_ip`, `jenkins_url`, `registry_name`, `do_volume_*` |
+| `ansible/group_vars/tf.generated.yml` | `vps_ip`, volumes, optional `registry_name` (infra only) |
 | `ansible/inventory.tf.yml` | Optional inventory snippet with the new droplet IP |
 
 ## Ansible handoff
 
-1. Merge `ansible/group_vars/tf.generated.yml` into `ansible/group_vars/all.yml` (or copy values).
-2. Keep secrets that Terraform does **not** manage:
-   - `jenkins_admin_password`
-   - `registry_username` (DO account email)
-   - `registry_token` (same API token as `.env` is fine)
+1. Merge `ansible/group_vars/tf.generated.yml` into `ansible/group_vars/all.yml` (`vps_ip`, `do_volume_*`, …).
+2. Keep secrets in `.env` (`JENKINS_ADMIN_PASSWORD`, `REGISTRY_*`, `DIGITALOCEAN_TOKEN`) — Ansible reads them via `lookup('env')`.
 3. Ensure `vps_ssh_private_key_file` points at `ansible/ssh/whanos_vps`.
 4. Configure the VPS:
 

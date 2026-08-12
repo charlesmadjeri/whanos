@@ -83,6 +83,7 @@ module "cluster" {
   region          = var.region
   node_count      = var.cluster_node_count
   node_size       = var.cluster_node_size
+  ha              = false # set true for HA control plane (slower + ~$40/mo)
   kubeconfig_path = "${local.repo_root}/kubeconfig.yaml"
 }
 

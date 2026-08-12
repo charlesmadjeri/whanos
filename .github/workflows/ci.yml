@@ -51,6 +51,8 @@ jobs:
 
       - name: Ansible syntax-check
         run: |
+          cp .env.example .env
+          set -a && . ./.env && set +a
           cp ansible/group_vars/all.example.yml ansible/group_vars/all.yml
           # Dummy values so inventory templates resolve
           sed -i 's/^vps_ip:.*/vps_ip: "127.0.0.1"/' ansible/group_vars/all.yml
@@ -63,13 +65,13 @@ jobs:
 
       - name: Docker Compose config
         run: |
-          cp jenkins/.env.example jenkins/.env
+          cp .env.example .env
           docker compose -f docker-compose.yml config >/dev/null
 
       - name: Guard against publishing unauthenticated Docker API
         run: |
           set -euo pipefail
-          test -f jenkins/.env || cp jenkins/.env.example jenkins/.env
+          test -f .env || cp .env.example .env
           # DinD may listen on 2375 inside the compose network, but must not map to the host.
           if docker compose -f docker-compose.yml config | grep -E 'published:[[:space:]]*"?2375"?'; then
             echo "FAIL: docker-compose must not publish host port 2375"

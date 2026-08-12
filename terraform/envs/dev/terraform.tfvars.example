@@ -7,7 +7,7 @@ registry_name        = "whanos"
 
 # DOKS (lab can be 1 node; subject prefers ≥2 for defense)
 cluster_node_count = 1
-cluster_node_size  = "s-2vcpu-2gb"
+cluster_node_size  = "s-1vcpu-2gb" # cheapest DOKS size (~$12/mo); was s-2vcpu-2gb (~$18)
 
 # Match current $4/mo Jenkins VM + 5 GiB tmp volume (~$0.50/mo)
 jenkins_droplet_size    = "s-1vcpu-512mb-10gb"

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Load repo-root .env then exec. Make cannot `include .env` safely (# starts a comment).
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+if [[ -f .env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env
+  set +a
+fi
+
+if [[ -n "${DIGITALOCEAN_TOKEN:-}" && -z "${DIGITALOCEAN_ACCESS_TOKEN:-}" ]]; then
+  export DIGITALOCEAN_ACCESS_TOKEN="$DIGITALOCEAN_TOKEN"
+fi
+if [[ -n "${DIGITALOCEAN_ACCESS_TOKEN:-}" && -z "${DIGITALOCEAN_TOKEN:-}" ]]; then
+  export DIGITALOCEAN_TOKEN="$DIGITALOCEAN_ACCESS_TOKEN"
+fi
+if [[ -n "${DIGITALOCEAN_TOKEN:-}" && -z "${REGISTRY_TOKEN:-}" ]]; then
+  export REGISTRY_TOKEN="$DIGITALOCEAN_TOKEN"
+fi
+
+exec "$@"

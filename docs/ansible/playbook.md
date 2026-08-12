@@ -16,11 +16,11 @@ Copy from `group_vars/all.example.yml` first. See [roles](roles/roles-hub.md).
 
 If you used [`make terraform-up`](../terraform.md):
 
-1. Merge `ansible/group_vars/tf.generated.yml` into `all.yml` (`vps_ip`, `jenkins_url`, `registry_name`, `do_volume_*`).
-2. Set `jenkins_admin_password`, `registry_username`, `registry_token`.
-3. Keep `vps_ssh_private_key_file` pointing at `ansible/ssh/whanos_vps` (same key Terraform installed).
+1. Merge `ansible/group_vars/tf.generated.yml` into `all.yml` (`vps_ip`, `do_volume_*`, …).
+2. Keep secrets in repo-root `.env` (`JENKINS_ADMIN_PASSWORD`, `REGISTRY_*`, `DIGITALOCEAN_TOKEN`).
+3. Ensure `vps_ssh_private_key_file` points at `ansible/ssh/whanos_vps` (same key Terraform installed).
 4. Ensure `kubeconfig.yaml` exists at the repo root (Terraform writes it).
-5. `make run-ansible`
+5. `make run-ansible` (`scripts/with-dotenv` exports `.env` for Ansible `lookup('env')`).
 
 Optional: `ansible/inventory.tf.yml` is also generated; the default `inventory.yml` still works when `vps_ip` is set in `all.yml`.
 

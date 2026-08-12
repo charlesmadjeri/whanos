@@ -42,7 +42,7 @@ variable "cluster_node_count" {
 
 variable "cluster_node_size" {
   type    = string
-  default = "s-2vcpu-2gb"
+  default = "s-1vcpu-2gb" # cheapest DOKS-capable size (~$12/mo)
 }
 
 variable "jenkins_droplet_size" {
@@ -94,6 +94,9 @@ module "cluster" {
   region          = var.region
   node_count      = var.cluster_node_count
   node_size       = var.cluster_node_size
+  ha              = false
+  auto_upgrade    = false
+  surge_upgrade   = false
   kubeconfig_path = "${local.repo_root}/kubeconfig.yaml"
 }
 
