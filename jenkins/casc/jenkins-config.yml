@@ -26,7 +26,15 @@ jenkins:
 
 security:
   globalJobDslSecurityConfiguration:
-    useScriptSecurity: false
+    # Sandbox on; linked jobs are generated via JSON-escaped DSL (generate_link_dsl.py).
+    useScriptSecurity: true
+  scriptApproval:
+    # Minimal approvals for Job DSL seed / external DSL processing under sandbox.
+    approvedSignatures:
+      - "method groovy.lang.GroovyObject invokeMethod java.lang.String java.lang.Object"
+      - "method groovy.lang.Closure call"
+      - "method groovy.lang.Closure call java.lang.Object"
+      - "method java.lang.String stripIndent"
   gitHostKeyVerificationConfiguration:
     sshHostKeyVerificationStrategy:
       manuallyProvidedKeyVerificationStrategy:

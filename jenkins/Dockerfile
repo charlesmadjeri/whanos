@@ -8,7 +8,7 @@ ENV CASC_JENKINS_CONFIG=/opt/whanos/jenkins/casc/jenkins-config.yml
 USER root
 
 RUN apt-get update && apt-get install -y lsb-release tree wget gettext-base \
-    iputils-ping net-tools
+    iputils-ping net-tools python3
 RUN curl -fsSLo /usr/share/keyrings/docker-archive-keyring.asc \
     https://download.docker.com/linux/debian/gpg
 RUN echo "deb [arch=$(dpkg --print-architecture) \
@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y docker-ce-cli
 
 COPY jenkins /opt/whanos/jenkins
 
-RUN chmod +x /opt/whanos/jenkins/scripts/*.sh
+RUN chmod +x /opt/whanos/jenkins/scripts/*.sh /opt/whanos/jenkins/scripts/*.py
 RUN mkdir -p /var/lib/jenkins/kube && \
     chown -R jenkins:jenkins /var/lib/jenkins/kube && \
     chmod 700 /var/lib/jenkins/kube
