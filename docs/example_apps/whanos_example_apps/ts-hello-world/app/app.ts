@@ -3,7 +3,7 @@ var app = express();
 
 // Routes
 app.get('/', function(req, res) {
-  res.send('Hello My World!');
+  res.send('Brave New World');
 });
 
 // Listen
