@@ -138,6 +138,7 @@ coverage.xml
 .env
 ansible/group_vars/all.yml
 ansible/group_vars/tf.generated.yml
+ansible/host_vars/whanos.yml
 ansible/inventory.tf.yml
 ansible/ssh/*
 !ansible/ssh/.gitkeep

@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""Blank Terraform-owned keys in all.yml after destroy so Ansible cannot SSH a dead IP."""
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+ALL_YML = ROOT / "ansible/group_vars/all.yml"
+HOST_VARS = ROOT / "ansible/host_vars/whanos.yml"
+GENERATED = ROOT / "ansible/group_vars/tf.generated.yml"
+INVENTORY_TF = ROOT / "ansible/inventory.tf.yml"
+
+# Keys that must not survive a droplet recreate/destroy without a fresh Terraform apply.
+CLEAR_KEYS = (
+    "vps_ip",
+    "jenkins_url",
+    "do_volume_device",
+    "do_volume_mount",
+    "jenkins_tmpdir",
+)
+
+
+def blank_keys(text: str) -> tuple[str, list[str]]:
+    changed: list[str] = []
+    for key in CLEAR_KEYS:
+        pattern = re.compile(rf"^{re.escape(key)}:\s*.*$", re.M)
+        if key == "jenkins_url":
+            repl = 'jenkins_url: "http://{{ vps_ip }}"'
+        elif key == "jenkins_tmpdir":
+            repl = 'jenkins_tmpdir: "{{ do_volume_mount }}/jenkins-tmp"'
+        else:
+            repl = f'{key}: ""'
+        if pattern.search(text):
+            new_text = pattern.sub(repl, text, count=1)
+            if new_text != text:
+                changed.append(key)
+                text = new_text
+    return text, changed
+
+
+def main() -> int:
+    for path in (HOST_VARS, GENERATED, INVENTORY_TF):
+        if path.is_file():
+            path.unlink()
+            print(f"Removed {path.relative_to(ROOT)}")
+
+    if not ALL_YML.is_file():
+        return 0
+
+    text = ALL_YML.read_text(encoding="utf-8")
+    new_text, changed = blank_keys(text)
+    if changed:
+        ALL_YML.write_text(new_text, encoding="utf-8")
+        print("Cleared stale keys in all.yml:", ", ".join(changed))
+    else:
+        print("all.yml had no Terraform IP/volume keys to clear")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

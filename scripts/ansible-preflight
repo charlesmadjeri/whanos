@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""Fail fast before Ansible SSHes a missing/stale droplet IP."""
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+HOST_VARS = ROOT / "ansible/host_vars/whanos.yml"
+ALL_YML = ROOT / "ansible/group_vars/all.yml"
+GENERATED = ROOT / "ansible/group_vars/tf.generated.yml"
+
+
+def parse_vps_ip(path: Path) -> str | None:
+    if not path.is_file():
+        return None
+    for line in path.read_text(encoding="utf-8").splitlines():
+        m = re.match(r'^vps_ip:\s*["\']?([^"\'#\s]+)', line.strip())
+        if m:
+            val = m.group(1).strip()
+            if val and val != '{{':
+                return val
+    return None
+
+
+def main() -> int:
+    # Precedence matches Ansible: host_vars > group_vars/all.yml
+    ip = parse_vps_ip(HOST_VARS) or parse_vps_ip(ALL_YML)
+    if not ip:
+        print(
+            "No vps_ip set. After Terraform: make terraform-up (writes ansible/host_vars/whanos.yml).\n"
+            "Manual VPS: set vps_ip in ansible/group_vars/all.yml (from all.example.yml).",
+            file=sys.stderr,
+        )
+        return 1
+
+    source = "host_vars/whanos.yml" if parse_vps_ip(HOST_VARS) else "group_vars/all.yml"
+    print(f"Ansible target vps_ip={ip} (from {source})")
+
+    if source == "group_vars/all.yml" and GENERATED.is_file():
+        gen_ip = parse_vps_ip(GENERATED)
+        if gen_ip and gen_ip != ip:
+            print(
+                f"WARNING: tf.generated.yml has {gen_ip} but all.yml has {ip}.\n"
+                f"  Run: make merge-tf-ansible   (or re-apply Terraform for host_vars)",
+                file=sys.stderr,
+            )
+            return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -9,7 +9,7 @@
 Typical flow on DigitalOcean:
 
 1. [Terraform](terraform.md) — `make terraform-up ENV=dev`
-2. Keep secrets in `.env`; merge `tf.generated.yml` into `all.yml` for IP/volumes only.
+2. Keep secrets in `.env`. Terraform writes `ansible/host_vars/whanos.yml` (droplet IP/volumes).
 3. [Ansible](ansible/ansible-hub.md) — `make run-ansible`
 4. [Start Jenkins](jenkins/start-jenkins.md) / [Use Jenkins](jenkins/use-jenkins.md)
 

@@ -16,13 +16,13 @@ Copy from `group_vars/all.example.yml` first. See [roles](roles/roles-hub.md).
 
 If you used [`make terraform-up`](../terraform.md):
 
-1. Merge `ansible/group_vars/tf.generated.yml` into `all.yml` (`vps_ip`, `do_volume_*`, …).
+1. Terraform writes `ansible/host_vars/whanos.yml` (`vps_ip`, volumes, …). Ansible loads it automatically and **overrides** any stale IP in `all.yml`.
 2. Keep secrets in repo-root `.env` (`JENKINS_ADMIN_PASSWORD`, `REGISTRY_*`, `DIGITALOCEAN_TOKEN`).
 3. Ensure `vps_ssh_private_key_file` points at `ansible/ssh/whanos_vps` (same key Terraform installed).
 4. Ensure `kubeconfig.yaml` exists at the repo root (Terraform writes it).
-5. `make run-ansible` (`scripts/with-dotenv` exports `.env` for Ansible `lookup('env')`).
+5. `make run-ansible` (preflight + optional merge; `scripts/with-dotenv` exports `.env`).
 
-Optional: `ansible/inventory.tf.yml` is also generated; the default `inventory.yml` still works when `vps_ip` is set in `all.yml`.
+`make terraform-down` clears host_vars and blanks leftover IPs in `all.yml` so the next recreate cannot SSH a dead address.
 
 ## VPS SSH auth (recommended)
 

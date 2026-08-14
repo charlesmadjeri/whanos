@@ -60,16 +60,22 @@ run-local-clean:
 
 ## Run the playbook to setup the server
 run-ansible:
+	@python3 scripts/ansible-preflight
+	@if [ -f ansible/group_vars/tf.generated.yml ]; then $(MAKE) --no-print-directory merge-tf-ansible; fi
 	$(DOTENV) env ANSIBLE_CONFIG=ansible/ansible.cfg \
 	  ansible-playbook -i ansible/inventory.yml ansible/playbook.yml
 
 ## Run the playbook to setup the server in verbose mode
 run-ansible-verbose:
+	@python3 scripts/ansible-preflight
+	@if [ -f ansible/group_vars/tf.generated.yml ]; then $(MAKE) --no-print-directory merge-tf-ansible; fi
 	$(DOTENV) env ANSIBLE_CONFIG=ansible/ansible.cfg \
 	  ansible-playbook -i ansible/inventory.yml ansible/playbook.yml -vvv
 
 ## Run the playbook to setup the server in very verbose mode
 run-ansible-very-verbose:
+	@python3 scripts/ansible-preflight
+	@if [ -f ansible/group_vars/tf.generated.yml ]; then $(MAKE) --no-print-directory merge-tf-ansible; fi
 	$(DOTENV) env ANSIBLE_CONFIG=ansible/ansible.cfg \
 	  ansible-playbook -i ansible/inventory.yml ansible/playbook.yml -vvvvv
 
@@ -107,7 +113,7 @@ terraform-up: terraform-init
 	  echo "Integrating DOCR with DOKS $$CLUSTER_ID..."; \
 	  doctl kubernetes cluster registry add "$$CLUSTER_ID" || \
 	  echo "WARN: run: doctl kubernetes cluster registry add $$CLUSTER_ID"'
-	@echo "Next: make merge-tf-ansible && make run-ansible  (or: make infra if starting fresh)"
+	@echo "Next: make run-ansible  (or: make infra if starting fresh)"
 	@$(DOTENV) bash -c 'cd "$(TF_DIR)" && terraform output next_steps'
 
 ## Destroy Terraform stack for ENV=dev|prod
@@ -115,11 +121,14 @@ terraform-down:
 	@$(DOTENV) bash -c 'test -n "$$DIGITALOCEAN_TOKEN" -o -n "$$DIGITALOCEAN_ACCESS_TOKEN" || \
 	  (echo "Missing DIGITALOCEAN_TOKEN. Copy .env.example → .env and set the token."; exit 1)'
 	$(DOTENV) bash -c 'cd "$(TF_DIR)" && terraform destroy -auto-approve'
+	@python3 scripts/clear-stale-vps-ip
 
-## Merge terraform tf.generated.yml into ansible/group_vars/all.yml
+## Sync Terraform IP/volumes into all.yml (host_vars/whanos.yml is preferred + auto-loaded)
 merge-tf-ansible:
 	python3 scripts/merge-tf-ansible-vars
 
-## Provision cloud infra then configure Jenkins (merge vars + Ansible)
-infra: terraform-up merge-tf-ansible run-ansible
-	@echo "Infra + Ansible done. Open http://$$(grep -E '^vps_ip:' ansible/group_vars/all.yml | head -1 | sed 's/.*: *//;s/[\\\" ]//g')/"
+## Provision cloud infra then configure Jenkins
+infra: terraform-up run-ansible
+	@python3 -c "import re,pathlib; p=pathlib.Path('ansible/host_vars/whanos.yml');\
+t=(p.read_text() if p.exists() else pathlib.Path('ansible/group_vars/all.yml').read_text());\
+m=re.search(r'vps_ip:\s*[\"\\']?([^\"\\'#\\s]+)', t); print('Infra + Ansible done. Open http://%s/' % (m.group(1) if m else 'VPS_IP'))"

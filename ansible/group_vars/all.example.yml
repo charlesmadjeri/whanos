@@ -1,5 +1,6 @@
 # VPS Configuration (non-secret). Secrets come from repo-root .env via lookup('env').
-# After Terraform: merge ansible/group_vars/tf.generated.yml (vps_ip, volumes, …).
+# After Terraform: ansible/host_vars/whanos.yml is written automatically (overrides vps_ip here).
+# Optional: make merge-tf-ansible also copies those keys into this file.
 
 vps_ip: ""
 # Leave unset for SSH-key auth. Never set to "" — Ansible treats that as password mode.
@@ -31,7 +32,7 @@ whanos_root: "/opt/whanos"
 
 # DigitalOcean block volume (optional; leave empty to skip)
 # Small droplets use tmpfs /tmp (~half of RAM), which trips Jenkins' 1GiB free-space check.
-# Terraform fills these in tf.generated.yml for the $4 droplet path.
+# Terraform fills these via host_vars/whanos.yml for the $4 droplet path.
 do_volume_device: "" # e.g. /dev/disk/by-id/scsi-0DO_Volume_whanos-dev-jenkins-tmp
 do_volume_mount: "" # e.g. /mnt/whanos-dev-jenkins-tmp
 jenkins_tmpdir: "{{ do_volume_mount }}/jenkins-tmp"

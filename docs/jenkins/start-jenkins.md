@@ -10,8 +10,7 @@ Recommended full stack:
 
 ```bash
 make terraform-up ENV=dev
-# merge ansible/group_vars/tf.generated.yml into all.yml (IP/volumes; secrets in .env)
-make run-ansible
+make run-ansible   # host_vars/whanos.yml supplies the new droplet IP
 # http://<vps_ip>/
 ```
 

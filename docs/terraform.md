@@ -32,7 +32,7 @@ terraform/
 | DOKS | 1× `s-1vcpu-2gb` (cheapest lab size) | **dominates the bill** (~$12/mo) — destroy when idle |
 | DOCR | `starter` | low / free tier |
 
-The 512 MB droplet needs the volume (tmpfs `/tmp` is too small for Jenkins). Terraform writes `do_volume_*` into `ansible/group_vars/tf.generated.yml` for Ansible.
+The 512 MB droplet needs the volume (tmpfs `/tmp` is too small for Jenkins). Terraform writes `do_volume_*` into `ansible/host_vars/whanos.yml` (Ansible auto-loads it).
 
 ## Prerequisites
 
@@ -75,12 +75,13 @@ make terraform-up ENV=dev      # apply + DOCR↔DOKS integration attempt
 | File | Purpose |
 |---|---|
 | `kubeconfig.yaml` | Cluster access for Jenkins / local `kubectl` |
-| `ansible/group_vars/tf.generated.yml` | `vps_ip`, volumes, optional `registry_name` (infra only) |
+| `ansible/host_vars/whanos.yml` | **Canonical** droplet IP + volumes (overrides stale `all.yml`) |
+| `ansible/group_vars/tf.generated.yml` | Same content; used by `make merge-tf-ansible` |
 | `ansible/inventory.tf.yml` | Optional inventory snippet with the new droplet IP |
 
 ## Ansible handoff
 
-1. Merge `ansible/group_vars/tf.generated.yml` into `ansible/group_vars/all.yml` (`vps_ip`, `do_volume_*`, …).
+1. After `terraform-up`, `ansible/host_vars/whanos.yml` already has the new IP — **no manual merge required**.
 2. Keep secrets in `.env` (`JENKINS_ADMIN_PASSWORD`, `REGISTRY_*`, `DIGITALOCEAN_TOKEN`) — Ansible reads them via `lookup('env')`.
 3. Ensure `vps_ssh_private_key_file` points at `ansible/ssh/whanos_vps`.
 4. Configure the VPS:
@@ -89,7 +90,7 @@ make terraform-up ENV=dev      # apply + DOCR↔DOKS integration attempt
 make run-ansible
 ```
 
-5. Open `http://<jenkins_ipv4>/` (from `terraform output jenkins_ipv4` or `all.yml`).
+5. Open `http://<jenkins_ipv4>/` (from `terraform output jenkins_ipv4`).
 
 Full Jenkins steps: [Start Jenkins](jenkins/start-jenkins.md) → [Use Jenkins](jenkins/use-jenkins.md).
 
@@ -111,8 +112,8 @@ Prod enforces `cluster_node_count >= 2`, defaults to a larger Jenkins size, and 
 | `make terraform-init ENV=dev` | `terraform init` |
 | `make terraform-plan ENV=dev` | plan |
 | `make terraform-up ENV=dev` | apply + registry↔cluster integration |
-| `make terraform-down ENV=dev` | destroy |
-| `make infra ENV=dev` | `terraform-up` → merge `tf.generated.yml` into `all.yml` → `run-ansible` |
+| `make terraform-down ENV=dev` | destroy + clear stale Ansible IP files |
+| `make infra ENV=dev` | `terraform-up` → `run-ansible` |
 
 After the first `init`, commit the provider lockfile:
 
@@ -125,6 +126,7 @@ git commit -m "chore(terraform): add provider lockfile for dev env"
 
 ```bash
 make terraform-down ENV=dev
+# Clears host_vars / tf.generated and blanks leftover vps_ip in all.yml
 # Optional leftover images: python scripts/clean_docr.py
 ```
 
@@ -132,7 +134,7 @@ If you created resources **outside** Terraform earlier, tear them down with `doc
 
 ## Security notes
 
-- Never commit `.env`, `terraform.tfvars`, `*.tfstate`, `kubeconfig.yaml`, or `tf.generated.yml`.
+- Never commit `.env`, `terraform.tfvars`, `*.tfstate`, `kubeconfig.yaml`, `host_vars/whanos.yml`, or `tf.generated.yml`.
 - State can contain kubeconfig material — use a remote backend + lock for shared/prod use.
 - Dev firewall may allow SSH from `0.0.0.0/0`; prod should restrict `ssh_allow_cidrs`.
 
