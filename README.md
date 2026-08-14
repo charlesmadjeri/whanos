@@ -2,43 +2,63 @@
 
 > Detect. Containerize. Ship. Deploy.
 
-Whanos turns a Git push into a language-aware Docker build, a registry push, and—when you want it—a Kubernetes rollout. Jenkins is the control plane; Terraform and Ansible rebuild the platform from this repo.
+A miniature **internal PaaS**: Git commits become language-aware Docker images, registry artifacts, and optional Kubernetes rollouts. The platform itself is rebuilt from this repository with the same DevOps practices you would expect in production—**IaC**, **configuration as code**, **immutable artifacts**, and **secrets outside Git**.
 
-## Features
+## DevOps toolchain
+
+Separation of concerns: **provision → configure → deliver → run**.
+
+| Layer | Tool | What it does | How (practice) |
+|:---|:---|:---|:---|
+| **Source** | Git + SCM poll | App repos are the source of truth | Linked jobs poll ~1 min; rebuild only on change |
+| **CI checks** | GitHub Actions + `make ci-*` | Validate detection, K8s apply scripts, base images | Fast feedback without a live cluster (mocked `kubectl`) |
+| **Provision** | Terraform (`envs/dev` · `envs/prod`) | DOCR registry, DOKS cluster, Jenkins droplet + volume + firewall | Declarative cloud; plan → apply → destroy when idle |
+| **Configure** | Ansible | Harden VPS, Docker, Jenkins Casc, Nginx, optional TLS | Idempotent roles; facts in `all.yml`, secrets from `.env` |
+| **Deliver** | Jenkins (Job DSL + Casc) | Detect language, build/push images, optional deploy | Pipelines and jobs as code; no click-ops for the golden path |
+| **Package** | Docker (+ Compose locally) | Slim base images per language; app images from bases or custom `Dockerfile` | Build once → push digest/tag → deploy the same artifact |
+| **Run** | Kubernetes (DOKS) + `kubectl` | Deployment + LoadBalancer when `whanos.yml` asks for it | Declarative manifests generated from config; rollout status gated |
+| **Cloud** | DigitalOcean (`doctl` optional) | Cheap lab path for registry + managed K8s + VPS | Provider CLI for manual bootstrap; TF preferred for recreate |
+| **Tooling** | Make · Nix (`shell.nix`) · repo-root `.env` | One entrypoint for plan/apply/ansible/compose | Reproducible CLI; secrets loaded via `scripts/with-dotenv`, never in tfvars |
+
+```text
+  ┌─ platform (rebuild anytime) ─────────────────────────────────────┐
+  │  Terraform ──► DOCR + DOKS + VPS                                 │
+  │       └──────► Ansible ──► Jenkins + Docker + Nginx              │
+  └──────────────────────────────────────────────────────────────────┘
+                              │
+  git push ──► Jenkins poll ──► detect lang ──► docker build & push
+                                      │
+                                      └─► whanos.yml.deployment?
+                                              └─► kubectl apply ──► LoadBalancer
+```
+
+## Product features
 
 | | |
 |:---|:---|
-| **Language auto-detection** | C · Java · JavaScript/TypeScript · Python · Befunge-93 — one matching criterion or the job fails cleanly |
-| **Base + standalone images** | Official Hub bases, slim runtimes, `docker build -t whanos-<lang> - < Dockerfile.base` |
-| **Custom Dockerfiles** | Apps may `FROM whanos-<lang>` after bases are built |
-| **Private Git** | HTTPS PAT or SSH via `link-project` credentials |
-| **SCM every minute** | Linked projects poll, rebuild, and redeploy on change |
-| **Optional K8s deploy** | Only when `whanos.yml` has `deployment` — replicas, resources, ports → LoadBalancer |
-| **IaC end-to-end** | Terraform: DOCR + DOKS + cheap Jenkins VPS → Ansible: Docker / Casc / Nginx |
-| **Local or VPS** | Compose for development; Ansible (or Terraform → Ansible) for defense-ready infra |
-
-```text
-  git push ──► Jenkins poll ──► detect lang ──► build & push image
-                                      │
-                                      └─► whanos.yml? ──► kubectl apply ──► LoadBalancer
-```
+| **Language auto-detection** | C · Java · JavaScript/TypeScript · Python · Befunge-93 — exactly one match, or the job fails cleanly |
+| **Base + standalone images** | Shared `whanos-<lang>` bases; apps may `FROM` them or ship a custom `Dockerfile` |
+| **Private Git** | HTTPS PAT or SSH credentials on `link-project` |
+| **Optional K8s deploy** | Only if `whanos.yml` has `deployment` (replicas, resources, ports) |
+| **Local or cloud Jenkins** | Compose for development; Terraform → Ansible for a defense-oriented VPS |
 
 <details>
-<summary><strong>Production use cases</strong></summary>
+<summary><strong>Portfolio / production narratives</strong></summary>
 
-| Scenario | How Whanos helps |
+| Story | What to point at |
 |---|---|
-| **Multi-service on Kubernetes** | Each service has its own repo; `link-project` wires build + deploy on the default branch. |
-| **Internal platform / PaaS** | Teams push code + optional `whanos.yml`; platform owns Jenkins, registry, and cluster. |
-| **Polyglot estates** | Language auto-detection with shared base images; optional custom `Dockerfile`. |
-| **Repeatable releases** | Build once, push, deploy the same artifact. |
-| **Small ops footprint** | Terraform provisions DO cloud; Ansible or Compose configures Jenkins. |
+| **Platform engineering** | Teams only push code (+ optional `whanos.yml`); platform owns Jenkins, registry, cluster |
+| **Polyglot CI** | Auto-detection + shared bases instead of one pipeline per language |
+| **Immutable delivery** | Same image tag/digest promoted from build to cluster |
+| **Cost-aware labs** | Cheap DO defaults; `make terraform-down ENV=dev` tears the stack down |
+| **Secure defaults** | Gitignored `.env`, Casc/Job DSL, SSH-key Ansible, optional ACME TLS |
 
 </details>
 
-You always need: a **registry**, a **Kubernetes cluster** (≥ 2 nodes preferred), and **Jenkins** (Compose locally or Ansible on a VPS).
+You always need: a **registry**, a **Kubernetes cluster** (≥ 2 nodes preferred in “prod”), and **Jenkins** (Compose locally or Ansible on a VPS).
 
 ---
+
 
 ## 1. Shared setup
 
@@ -102,7 +122,7 @@ Used by Compose, Terraform/`doctl`, and Ansible (`lookup('env')`). Gitignored.
 
 Non-secret / host-specific only: `vps_ip`, `vps_ssh_private_key_file`, optional `do_volume_*`, `jenkins_tls_*`. Passwords and registry secrets are read from `.env`.
 
-After **Terraform**, merge `ansible/group_vars/tf.generated.yml` into `all.yml` (IP, registry name, volume paths). Keep `kubeconfig.yaml` at the repo root.
+After **Terraform**, `ansible/host_vars/whanos.yml` is written with the droplet IP (Ansible loads it automatically). Keep `kubeconfig.yaml` at the repo root.
 
 See [Ansible playbook](docs/ansible/playbook.md) and [Terraform](docs/terraform.md).
 
@@ -126,9 +146,7 @@ test -f ansible/ssh/whanos_vps || \
 cp terraform/envs/dev/terraform.tfvars.example terraform/envs/dev/terraform.tfvars
 make terraform-plan ENV=dev
 make terraform-up ENV=dev
-
-# Merge ansible/group_vars/tf.generated.yml → all.yml (IP / volumes; secrets stay in .env)
-make run-ansible
+make run-ansible   # uses host_vars/whanos.yml from Terraform (no manual IP edit)
 ```
 
 Full guide: **[Terraform](docs/terraform.md)** · then [Start Jenkins](docs/jenkins/start-jenkins.md) → [Use Jenkins](docs/jenkins/use-jenkins.md).
