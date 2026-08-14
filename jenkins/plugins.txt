@@ -1,5 +1,6 @@
 configuration-as-code:2117.vc05a_0b_e6b_f4e
 job-dsl:3654.vdf58f53e2d15
+authorize-project:531.vf8761dfd75d2
 workflow-aggregator:608.v67378e9d3db_1
 git:5.10.1
 role-strategy:867.vd09254229f9b_

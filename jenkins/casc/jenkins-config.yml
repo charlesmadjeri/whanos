@@ -26,10 +26,22 @@ jenkins:
 
 security:
   globalJobDslSecurityConfiguration:
-    # Sandbox on; linked jobs are generated via JSON-escaped DSL (generate_link_dsl.py).
+    # Keep Job DSL script security on. link-project runs generated DSL in the Groovy
+    # sandbox (see jobs/link_project.groovy) so each new project does not need a
+    # whole-script approval hash. Sandbox requires Authorize Project (not SYSTEM).
     useScriptSecurity: true
+  # Enable per-job "run as" strategies (needed for sandboxed Job DSL).
+  queueItemAuthenticator:
+    authenticators:
+      - projectQueueItemAuthenticator:
+          enabledStrategies:
+            - "org.jenkinsci.plugins.authorizeproject.strategy.TriggeringUsersAuthorizationStrategy"
+            - "org.jenkinsci.plugins.authorizeproject.strategy.SpecificUsersAuthorizationStrategy"
+          disabledStrategies:
+            - "org.jenkinsci.plugins.authorizeproject.strategy.AnonymousAuthorizationStrategy"
+            - "org.jenkinsci.plugins.authorizeproject.strategy.SystemAuthorizationStrategy"
   scriptApproval:
-    # Minimal approvals for Job DSL seed / external DSL processing under sandbox.
+    # Minimal approvals for Casc-seeded Job DSL (folders / base images / link-project).
     approvedSignatures:
       - "method groovy.lang.GroovyObject invokeMethod java.lang.String java.lang.Object"
       - "method groovy.lang.Closure call"

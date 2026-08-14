@@ -1,4 +1,13 @@
 freeStyleJob('link-project') {
+    // Sandboxed Job DSL cannot run as SYSTEM — use the user who clicked Build.
+    properties {
+        authorizeProjectProperty {
+            strategy {
+                triggeringUsersAuthorizationStrategy()
+            }
+        }
+    }
+
     parameters {
         stringParam('GIT_URL', '', 'Git repository URL (HTTPS or SSH)')
         stringParam('PROJECT_NAME', '', 'Name of the project (alphanumeric, dash, underscore)')
@@ -22,12 +31,20 @@ freeStyleJob('link-project') {
         // Params are validated + JSON-escaped into DSL by generate_link_dsl.py (no Groovy GStrings).
         shell('''
             set -euo pipefail
-            export LINK_DSL_OUT="${WORKSPACE}/linked_project.dsl.groovy"
+            # Job DSL script names may only use [A-Za-z0-9_]; a middle ".dsl" makes the name invalid.
+            export LINK_DSL_OUT="${WORKSPACE}/linked_project.groovy"
             /opt/whanos/jenkins/scripts/generate_link_dsl.py
         '''.stripIndent())
 
+        // Sandbox: no whole-script hash approval (dynamic DSL changes every link).
+        // Job DSL methods are whitelisted; user input is constrained by generate_link_dsl.py.
         dsl {
-            external('linked_project.dsl.groovy')
+            external('linked_project.groovy')
         }
+    }
+
+    // Job DSL's dsl{} helper does not expose sandbox(); set it on the builder XML.
+    configure { project ->
+        (project / builders / 'javaposse.jobdsl.plugin.ExecuteDslScripts' / sandbox).setValue('true')
     }
 }

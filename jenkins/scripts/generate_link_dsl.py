@@ -25,7 +25,7 @@ def main() -> None:
     root = os.environ.get("PROJECT_ROOT") or ""
     creds = os.environ.get("GIT_CREDENTIALS") or ""
     ssh = os.environ.get("GIT_SSH_KEY") or ""
-    out = Path(os.environ.get("LINK_DSL_OUT", "linked_project.dsl.groovy"))
+    out = Path(os.environ.get("LINK_DSL_OUT", "linked_project.groovy"))
 
     if not name:
         die("PROJECT_NAME is required")
